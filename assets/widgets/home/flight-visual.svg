@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6EA2B8"/>
+      <stop offset="100%" stop-color="#234E65"/>
+    </linearGradient>
+    <linearGradient id="route" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E8D7B2" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#E8D7B2" stop-opacity="0.96"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" rx="24" fill="url(#bg)"/>
+  <g opacity="0.16" stroke="#F4EFE3">
+    <path d="M22 44 H298"/>
+    <path d="M22 88 H298"/>
+    <path d="M22 132 H298"/>
+    <path d="M22 176 H298"/>
+    <path d="M54 18 V202"/>
+    <path d="M108 18 V202"/>
+    <path d="M162 18 V202"/>
+    <path d="M216 18 V202"/>
+    <path d="M270 18 V202"/>
+  </g>
+  <circle cx="54" cy="150" r="10" fill="#E8D7B2"/>
+  <circle cx="270" cy="78" r="10" fill="#E8D7B2"/>
+  <path d="M54 150 C112 82, 192 84, 270 78" fill="none" stroke="url(#route)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M181 93 l16 7 -16 7 5 -7z" fill="#F4EFE3"/>
+  <rect x="36" y="168" width="38" height="16" rx="8" fill="#0B2F4B" fill-opacity="0.55"/>
+  <text x="55" y="180" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="700" fill="#F4EFE3">KUL</text>
+  <rect x="250" y="48" width="38" height="16" rx="8" fill="#0B2F4B" fill-opacity="0.55"/>
+  <text x="269" y="60" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="700" fill="#F4EFE3">LHR</text>
+</svg>
