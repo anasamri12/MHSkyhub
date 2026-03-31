@@ -1,0 +1,233 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MHSkyhub Crew - MH 003</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- CREW HEADER -->
+  <div id="crew-header">
+    <div class="ch-left">
+      <div class="crew-wordmark">
+        <div class="crew-logo-mark"><img src="../assets/branding/malaysia-airlines-logo.png" alt="Malaysia Airlines logo"></div>
+        <div>
+          <div class="crew-wordmark-text">MHSkyhub Crew</div>
+          <div class="crew-wordmark-sub">Cabin Management System</div>
+        </div>
+      </div>
+      <div class="hdr-divider"></div>
+      <div class="hdr-flight">MH 003</div>
+      <div class="hdr-route">KUL → LHR</div>
+    </div>
+
+    <div class="ch-center">
+      <div class="summary-badge badge-red">
+        <div class="badge-dot"></div>
+        Active: <span id="badge-active">2</span>
+      </div>
+      <div class="summary-badge badge-gold">
+        <div class="badge-dot"></div>
+        In Progress: <span id="badge-inprogress">2</span>
+      </div>
+      <div class="summary-badge badge-green">
+        <div class="badge-dot"></div>
+        Completed: <span id="badge-completed">1</span>
+      </div>
+    </div>
+
+    <div class="ch-right">
+      <div class="section-filter">
+        <button class="section-filter-btn active">All</button>
+        <button class="section-filter-btn">Front</button>
+        <button class="section-filter-btn">Mid</button>
+        <button class="section-filter-btn">Rear</button>
+      </div>
+      <div class="hdr-divider"></div>
+      <div class="crew-clock" id="crew-clock">--:--</div>
+      <div class="crew-name-badge">
+        <div class="crew-name">Sarah Lim</div>
+        <div class="crew-role">Senior Flight Attendant</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div id="main-layout">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+      <div class="sidebar-filters">
+        <div class="filter-tab active" onclick="setFilter('all',this)">All <span class="filter-count" id="fc-all">5</span></div>
+        <div class="filter-tab" onclick="setFilter('new',this)">New <span class="filter-count" id="fc-new">2</span></div>
+        <div class="filter-tab" onclick="setFilter('inprogress',this)">In Progress <span class="filter-count" id="fc-inprogress">2</span></div>
+        <div class="filter-tab" onclick="setFilter('completed',this)">Completed <span class="filter-count" id="fc-completed">1</span></div>
+      </div>
+      <div class="sidebar-search">
+        <input type="text" class="search-input" placeholder="🔍 Search by seat or item…" id="search-input" oninput="filterRequests()">
+      </div>
+      <div class="sidebar-list" id="sidebar-list">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div id="right-panel">
+
+      <!-- Default: Analytics + Map -->
+      <div id="panel-default">
+        <div class="dashboard-layout">
+          <div class="dashboard-main">
+            <div class="analytics-header">Dashboard Overview</div>
+            <div class="analytics-cards">
+              <div class="analytics-card">
+                <div class="ac-val" id="ac-active" style="color:var(--red-bright);">2</div>
+                <div class="ac-label">Total Active</div>
+                <div class="ac-sub">Awaiting action</div>
+              </div>
+              <div class="analytics-card">
+                <div class="ac-val" id="ac-avg" style="color:var(--gold-light);">4.2</div>
+                <div class="ac-label">Avg Response</div>
+                <div class="ac-sub">Minutes</div>
+              </div>
+              <div class="analytics-card">
+                <div class="ac-val" id="ac-completed" style="color:var(--success);">1</div>
+                <div class="ac-label">Completed Today</div>
+                <div class="ac-sub">Great work!</div>
+              </div>
+              <div class="analytics-card">
+                <div class="ac-val" style="color:var(--text-muted);">2</div>
+                <div class="ac-label">Pending Orders</div>
+                <div class="ac-sub">Food & drink</div>
+              </div>
+            </div>
+
+            <div class="no-select-msg" style="height:200px;">
+              <div class="no-select-icon">👆</div>
+              <div class="no-select-title">Select a request to view details</div>
+              <div class="no-select-sub">Click any request from the sidebar<br>to view full details and update status.</div>
+            </div>
+          </div>
+
+          <div class="dashboard-side">
+            <div class="cabin-map-section">
+              <div class="cabin-map-title-row">
+                <div>
+                  <div class="cabin-map-title">Cabin Map — Active Requests</div>
+                  <div class="cabin-map-sub">Full aircraft overview inspired by an A350 cabin layout</div>
+                </div>
+                <div class="cabin-map-badge">Widebody View</div>
+              </div>
+              <div class="cabin-map-shell">
+                <div class="cabin-wing left"></div>
+                <div class="cabin-wing right"></div>
+                <div class="cabin-map" id="cabin-map">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+              <div class="cabin-legend">
+                <div class="legend-item"><div class="legend-dot legend-red"></div>New Request</div>
+                <div class="legend-item"><div class="legend-dot legend-gold"></div>In Progress</div>
+                <div class="legend-item"><div class="legend-dot legend-green"></div>Completed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Panel -->
+      <div id="panel-detail">
+        <div class="detail-back" onclick="closeDetail()">‹ Back to Dashboard</div>
+
+        <div class="detail-header-card">
+          <div class="dh-top">
+            <div class="dh-seat-block">
+              <div class="dh-seat-num" id="detail-seat">14A</div>
+              <div class="dh-seat-class" id="detail-class">Economy Class</div>
+            </div>
+            <div class="dh-right">
+              <div class="dh-status-badge status-new" id="detail-status-badge">● New</div>
+            </div>
+          </div>
+          <div class="dh-item-row">
+            <div class="dh-item-icon" id="detail-icon">☕</div>
+            <div>
+              <div class="dh-item-name" id="detail-item-name">Teh Tarik</div>
+              <div class="dh-item-meta" id="detail-meta">Submitted · just now</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-note" id="detail-note-block" style="display:none;">
+          <div class="detail-note-label">Passenger Note</div>
+          <div class="detail-note-text" id="detail-note-text"></div>
+        </div>
+
+        <div class="detail-eta">
+          <div class="deta-label">Estimated fulfilment time</div>
+          <div class="deta-val">~5 min</div>
+        </div>
+
+        <!-- Status Workflow -->
+        <div class="workflow-title">Update Status</div>
+        <div class="workflow-steps" id="workflow-steps">
+          <div class="workflow-step active" id="ws-new" onclick="setDetailStatus('new')">
+            <div class="ws-icon">📥</div>
+            <div class="ws-label">Received</div>
+          </div>
+          <div class="workflow-step" id="ws-preparing" onclick="setDetailStatus('preparing')">
+            <div class="ws-icon">🍵</div>
+            <div class="ws-label">Preparing</div>
+          </div>
+          <div class="workflow-step" id="ws-ontheway" onclick="setDetailStatus('ontheway')">
+            <div class="ws-icon">🚶</div>
+            <div class="ws-label">On the Way</div>
+          </div>
+          <div class="workflow-step" id="ws-delivered" onclick="setDetailStatus('delivered')">
+            <div class="ws-icon">✅</div>
+            <div class="ws-label">Delivered</div>
+          </div>
+        </div>
+
+        <div class="delivered-success" id="delivered-success">
+          <div class="ds-icon">✅</div>
+          <div class="ds-title">Request Fulfilled!</div>
+          <div class="ds-sub">The passenger has been served successfully.</div>
+        </div>
+
+        <div onclick="markUnable()" class="unable-btn">Unable to Fulfil This Request</div>
+
+        <!-- Assign Row -->
+        <div class="assign-row">
+          <div class="assign-label">Assigned to:</div>
+          <select class="assign-select">
+            <option>Sarah Lim (You)</option>
+            <option>Ahmad Razif</option>
+            <option>Priya Nair</option>
+            <option>James Ong</option>
+          </select>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="detail-actions" id="detail-actions">
+          <button class="btn btn-secondary" onclick="closeDetail()">Back</button>
+          <button class="btn btn-gold" id="mark-complete-btn" onclick="markComplete()" style="display:none;">Mark Complete</button>
+        </div>
+
+      </div>
+
+    </div><!-- end right panel -->
+  </div><!-- end main layout -->
+</div><!-- end app -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
