@@ -185,7 +185,8 @@
   .show-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
   .show-card { background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:14px; overflow:hidden; cursor:pointer; transition:all 0.2s; }
   .show-card:hover { transform:translateY(-2px); border-color:rgba(232,215,178,0.32); }
-  .show-thumb { width:100%; aspect-ratio:16/9; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:36px; }
+  .show-thumb { width:100%; aspect-ratio:16/9; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:36px; overflow:hidden; }
+  .show-thumb img { width:100%; height:100%; display:block; object-fit:cover; }
   .show-info { padding:10px; }
   .show-title { font-size:12px; font-weight:600; margin-bottom:2px; }
   .show-meta { font-size:10px; color:var(--text-muted); }
@@ -542,42 +543,42 @@
             <div class="movie-poster"><img src="assets/posters/movies/dune_part_two.jpg" alt="Dune: Part Two poster" loading="lazy"></div>
             <div class="movie-title">Dune: Part Two</div>
             <div class="movie-meta">2024 · 2h 46m</div>
-            <div class="movie-stars">⭐ 8.5</div>
+            <div class="movie-stars">⭐ 8.5/10</div>
             <div class="progress-wrap"><div class="progress-bar" style="width:42%"></div></div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/mufasa.jpg" alt="Mufasa poster" loading="lazy"></div>
             <div class="movie-title">Mufasa</div>
             <div class="movie-meta">2024 · 1h 58m</div>
-            <div class="movie-stars">⭐ 7.2</div>
+            <div class="movie-stars">⭐ 7.2/10</div>
             <div class="progress-wrap"><div class="progress-bar" style="width:78%"></div></div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/interstellar.jpg" alt="Interstellar poster" loading="lazy"></div>
             <div class="movie-title">Interstellar</div>
             <div class="movie-meta">2014 · 2h 49m</div>
-            <div class="movie-stars">⭐ 8.6</div>
+            <div class="movie-stars">⭐ 8.6/10</div>
             <div class="progress-wrap"><div class="progress-bar" style="width:15%"></div></div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/mission_impossible_2023.jpg" alt="Mission: Impossible poster" loading="lazy"></div>
             <div class="movie-title">Mission: Impossible</div>
             <div class="movie-meta">2023 · 2h 43m</div>
-            <div class="movie-stars">⭐ 7.8</div>
+            <div class="movie-stars">⭐ 7.8/10</div>
             <div class="progress-wrap"><div class="progress-bar" style="width:60%"></div></div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/top_gun_maverick.jpg" alt="Top Gun: Maverick poster" loading="lazy"></div>
             <div class="movie-title">Top Gun: Maverick</div>
             <div class="movie-meta">2022 | 2h 11m</div>
-            <div class="movie-stars">8.2/10</div>
+            <div class="movie-stars">⭐ 8.2/10</div>
             <div class="progress-wrap"><div class="progress-bar" style="width:31%"></div></div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/barbie.jpg" alt="Barbie poster" loading="lazy"></div>
             <div class="movie-title">Barbie</div>
             <div class="movie-meta">2023 | 1h 54m</div>
-            <div class="movie-stars">6.9/10</div>
+            <div class="movie-stars">⭐ 6.9/10</div>
             <div class="progress-wrap"><div class="progress-bar" style="width:54%"></div></div>
           </div>
         </div>
@@ -588,37 +589,37 @@
             <div class="movie-poster"><img src="assets/posters/movies/aquaman2.jpg" alt="Aquaman 2 poster" loading="lazy"></div>
             <div class="movie-title">Aquaman 2</div>
             <div class="movie-meta">2023 · 2h 4m</div>
-            <div class="movie-stars">⭐ 5.8</div>
+            <div class="movie-stars">⭐ 5.8/10</div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/oppenheimer.jpg" alt="Oppenheimer poster" loading="lazy"></div>
             <div class="movie-title">Oppenheimer</div>
             <div class="movie-meta">2023 · 3h 0m</div>
-            <div class="movie-stars">⭐ 8.4</div>
+            <div class="movie-stars">⭐ 8.4/10</div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/everest.jpg" alt="Everest poster" loading="lazy"></div>
             <div class="movie-title">Everest</div>
             <div class="movie-meta">2015 · 2h 1m</div>
-            <div class="movie-stars">⭐ 7.1</div>
+            <div class="movie-stars">⭐ 7.1/10</div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/poor_things.jpg" alt="Poor Things poster" loading="lazy"></div>
             <div class="movie-title">Poor Things</div>
             <div class="movie-meta">2023 · 2h 21m</div>
-            <div class="movie-stars">⭐ 7.9</div>
+            <div class="movie-stars">⭐ 7.9/10</div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/wonka.jpg" alt="Wonka poster" loading="lazy"></div>
             <div class="movie-title">Wonka</div>
             <div class="movie-meta">2023 | 1h 56m</div>
-            <div class="movie-stars">7.0/10</div>
+            <div class="movie-stars">⭐ 7.0/10</div>
           </div>
           <div class="movie-card">
             <div class="movie-poster"><img src="assets/posters/movies/the_creator.jpg" alt="The Creator poster" loading="lazy"></div>
             <div class="movie-title">The Creator</div>
             <div class="movie-meta">2023 | 2h 13m</div>
-            <div class="movie-stars">6.7/10</div>
+            <div class="movie-stars">⭐ 6.7/10</div>
           </div>
         </div>
       </div>
@@ -628,56 +629,56 @@
         <div class="section-title" style="margin-top:0;">Popular Series</div>
         <div class="show-grid">
           <div class="show-card">
-            <div class="show-thumb">📺</div>
+            <div class="show-thumb"><img src="assets/posters/tv/succession.jpg" alt="Succession poster" loading="lazy"></div>
             <div class="show-info">
               <div class="show-title">Succession</div>
               <div class="show-meta">Drama · 4 seasons</div>
             </div>
           </div>
           <div class="show-card">
-            <div class="show-thumb">🎭</div>
+            <div class="show-thumb"><img src="assets/posters/tv/the_bear.webp" alt="The Bear poster" loading="lazy"></div>
             <div class="show-info">
               <div class="show-title">The Bear</div>
               <div class="show-meta">Drama · 3 seasons</div>
             </div>
           </div>
           <div class="show-card">
-            <div class="show-thumb">🌍</div>
+            <div class="show-thumb"><img src="assets/posters/tv/planet_earth_iii.avif" alt="Planet Earth III poster" loading="lazy"></div>
             <div class="show-info">
               <div class="show-title">Planet Earth III</div>
               <div class="show-meta">Documentary · 1 season</div>
             </div>
           </div>
           <div class="show-card">
-            <div class="show-thumb">😂</div>
+            <div class="show-thumb"><img src="assets/posters/tv/ted_lasso.jpg" alt="Ted Lasso poster" loading="lazy"></div>
             <div class="show-info">
               <div class="show-title">Ted Lasso</div>
               <div class="show-meta">Comedy · 3 seasons</div>
             </div>
           </div>
           <div class="show-card">
-            <div class="show-thumb">🔪</div>
+            <div class="show-thumb"><img src="assets/posters/tv/only_murders.avif" alt="Only Murders poster" loading="lazy"></div>
             <div class="show-info">
               <div class="show-title">Only Murders</div>
               <div class="show-meta">Mystery · 4 seasons</div>
             </div>
           </div>
           <div class="show-card">
-            <div class="show-thumb">🌙</div>
+            <div class="show-thumb"><img src="assets/posters/tv/shogun.avif" alt="Shogun poster" loading="lazy"></div>
             <div class="show-info">
               <div class="show-title">Shogun</div>
               <div class="show-meta">Historical · 1 season</div>
             </div>
           </div>
           <div class="show-card">
-            <div class="show-thumb">⚡</div>
+            <div class="show-thumb"><img src="assets/posters/tv/the_boys.jpg" alt="The Boys poster" loading="lazy"></div>
             <div class="show-info">
               <div class="show-title">The Boys</div>
               <div class="show-meta">Action · 4 seasons</div>
             </div>
           </div>
           <div class="show-card">
-            <div class="show-thumb">🏝</div>
+            <div class="show-thumb"><img src="assets/posters/tv/white_lotus.webp" alt="White Lotus poster" loading="lazy"></div>
             <div class="show-info">
               <div class="show-title">White Lotus</div>
               <div class="show-meta">Drama · 3 seasons</div>
