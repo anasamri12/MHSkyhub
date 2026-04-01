@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -106,6 +106,26 @@
                 <div class="ac-sub">Food & drink</div>
               </div>
             </div>
+
+<div class="crew-chat-card">
+  <div class="crew-chat-header">
+    <div>
+      <div class="crew-chat-label">Passenger Chat</div>
+      <div class="crew-chat-title-row">
+        <div class="crew-chat-title">Live cabin messaging</div>
+        <select class="crew-chat-seat-select" id="crew-chat-seat" onchange="changeCrewChatSeat(this.value)"></select>
+      </div>
+    </div>
+    <div class="crew-chat-meta" id="crew-chat-meta">Syncing messages...</div>
+  </div>
+  <div class="crew-chat-messages" id="crew-chat-messages">
+    <div class="crew-chat-empty">Waiting for passenger messages...</div>
+  </div>
+  <div class="crew-chat-input-row">
+    <input type="text" class="crew-chat-input" id="crew-chat-input" placeholder="Reply to passenger..." onkeydown="if(event.key==='Enter')sendCrewChat()">
+    <button class="btn btn-primary crew-chat-send" onclick="sendCrewChat()">Send</button>
+  </div>
+</div>
 
             <div class="no-select-msg" style="height:200px;">
               <div class="no-select-icon">👆</div>

@@ -1,4 +1,51 @@
 // ============================================================
+// API
+// ============================================================
+const API_BASE = '/api';
+const PASSENGER_SEAT = '14A';
+const CHAT_POLL_MS = 2500;
+const DEFAULT_CHAT_MESSAGES = [
+  {
+    id: 1,
+    seat: PASSENGER_SEAT,
+    from: 'crew',
+    text: 'Good afternoon! How can I assist you today?',
+    timestamp: new Date(Date.now() - 3 * 60000).toISOString()
+  },
+  {
+    id: 2,
+    seat: PASSENGER_SEAT,
+    from: 'passenger',
+    text: 'Could I get an extra pillow please?',
+    timestamp: new Date(Date.now() - 2 * 60000).toISOString()
+  },
+  {
+    id: 3,
+    seat: PASSENGER_SEAT,
+    from: 'crew',
+    text: "Of course! I'll bring that right over. Anything else?",
+    timestamp: new Date(Date.now() - 1 * 60000).toISOString()
+  }
+];
+
+// Example: load movie posters from backend and render into a container
+// Call this wherever you build the watch/movies screen, e.g. inside setWatchTab('movies')
+async function loadMoviePosters(containerEl) {
+  try {
+    const res     = await fetch(`${API_BASE}/posters/movies`);
+    const posters = await res.json();
+    containerEl.innerHTML = posters.map(p =>
+      `<div class="poster-card">
+         <img src="${p.url}" alt="${p.title}" loading="lazy">
+         <p>${p.title}</p>
+       </div>`
+    ).join('');
+  } catch (err) {
+    console.error('Could not load movie posters:', err);
+  }
+}
+
+// ============================================================
 // STATE
 // ============================================================
 let currentScreen = 'home';
@@ -15,6 +62,9 @@ const flightTotalSeconds = (13 * 60 + 45) * 60;
 let flightEtaSeconds = initialFlightEtaSeconds;
 let syncInterval = null;
 let toastTimeout = null;
+let chatPollInterval = null;
+let chatMessages = [];
+let chatInitialized = false;
 let lavStates = { front: 'available', mid: 'occupied', rear: 'available' };
 const bluetoothDevices = [
   { id: 'sony', name: 'Sony WH-1000XM5', battery: 78 },
@@ -57,7 +107,10 @@ function navigateTo(screenId) {
   // Special handling
   if (screenId === 'track') refreshTrackScreen();
   if (screenId === 'order') showOrderCategories();
-  if (screenId === 'chat') scrollChatToBottom();
+  if (screenId === 'chat') {
+    fetchPassengerChatMessages({ silent: true });
+    scrollChatToBottom();
+  }
 }
 
 // ============================================================
@@ -116,7 +169,7 @@ function interpolateRoutePosition(progress) {
 }
 
 function formatCoordinate(value, positiveLabel, negativeLabel) {
-  return Math.abs(value).toFixed(1) + '°' + (value >= 0 ? positiveLabel : negativeLabel);
+  return Math.abs(value).toFixed(1) + 'Ã‚Â°' + (value >= 0 ? positiveLabel : negativeLabel);
 }
 
 function updateFlightMap() {
@@ -147,7 +200,7 @@ function updateFlightMap() {
   if (mapLocation) mapLocation.textContent = routePosition.label;
   if (mapCoords) mapCoords.textContent = formatCoordinate(routePosition.lat, 'N', 'S') + ', ' + formatCoordinate(routePosition.lon, 'E', 'W');
   if (mapProgressText) mapProgressText.textContent = percent + '%';
-  if (mapProgressSub) mapProgressSub.textContent = flownHours + 'h ' + String(flownMins).padStart(2,'0') + 'm flown · ' + document.getElementById('fi-eta').textContent + ' remaining';
+  if (mapProgressSub) mapProgressSub.textContent = flownHours + 'h ' + String(flownMins).padStart(2,'0') + 'm flown Ã‚Â· ' + document.getElementById('fi-eta').textContent + ' remaining';
 }
 
 // ============================================================
@@ -188,9 +241,9 @@ function changeQty(delta) {
   document.getElementById('qty-val').textContent = orderQty;
 }
 function showOrderConfirmModal() {
-  document.getElementById('modal-icon').textContent = '☕';
+  document.getElementById('modal-icon').textContent = 'Ã¢Ëœâ€¢';
   document.getElementById('modal-title').textContent = 'Confirm Your Order';
-  document.getElementById('modal-body').textContent = 'Teh Tarik × ' + orderQty + '\nYour order will be sent to cabin crew immediately.';
+  document.getElementById('modal-body').textContent = 'Teh Tarik Ãƒâ€” ' + orderQty + '\nYour order will be sent to cabin crew immediately.';
   document.getElementById('modal-overlay').classList.add('show');
 }
 function closeModal() {
@@ -209,7 +262,7 @@ function placeOrder() {
     status: 'new',
     timestamp: Date.now(),
     eta: 360,
-    icon: '☕'
+    icon: 'Ã¢Ëœâ€¢'
   };
   saveRequest(req);
   activeRequest = req;
@@ -217,7 +270,7 @@ function placeOrder() {
   startEtaCountdown();
   showActiveBanner();
   document.getElementById('order-badge').classList.add('show');
-  showToast('✓ Order placed! Tracking your Teh Tarik.', 'success');
+  showToast('Ã¢Å“â€œ Order placed! Tracking your Teh Tarik.', 'success');
   navigateTo('track');
 }
 
@@ -266,7 +319,7 @@ function sendAssistRequest() {
   startEtaCountdown();
   showActiveBanner();
   document.getElementById('order-badge').classList.add('show');
-  showToast('✓ Assistance requested: ' + assistSelected, 'success');
+  showToast('Ã¢Å“â€œ Assistance requested: ' + assistSelected, 'success');
   navigateTo('track');
   // Reset
   document.querySelectorAll('.assist-card').forEach(c => c.classList.remove('selected'));
@@ -284,48 +337,97 @@ function scrollChatToBottom() {
   }, 50);
 }
 
-function sendChat() {
+function formatChatTime(timestamp) {
+  return new Date(timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function normalizeChatMessages(messages) {
+  return (messages || [])
+    .map((message, index) => ({
+      id: message.id ?? index + 1,
+      seat: message.seat || PASSENGER_SEAT,
+      from: message.from === 'crew' ? 'crew' : 'passenger',
+      text: String(message.text || ''),
+      timestamp: message.timestamp || new Date().toISOString()
+    }))
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+}
+
+function renderPassengerChat(messages) {
+  const msgs = document.getElementById('chat-messages');
+  if (!msgs) return;
+
+  msgs.innerHTML = messages.map(message =>
+    '<div class="msg ' + message.from + '">' +
+      '<div class="msg-bubble">' + escapeHtml(message.text) + '</div>' +
+      '<div class="msg-time">' + formatChatTime(message.timestamp) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+async function fetchPassengerChatMessages(options) {
+  const silent = options && options.silent === true;
+
+  try {
+    const res = await fetch(`${API_BASE}/chat?seat=${encodeURIComponent(PASSENGER_SEAT)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Chat fetch failed: ' + res.status);
+
+    const payload = await res.json();
+    const previousLastId = chatMessages.length ? chatMessages[chatMessages.length - 1].id : 0;
+
+    chatMessages = normalizeChatMessages(payload.messages);
+    renderPassengerChat(chatMessages);
+
+    if (chatInitialized) {
+      const newCrewMessages = chatMessages.filter(message => message.id > previousLastId && message.from === 'crew');
+      if (newCrewMessages.length && currentScreen !== 'chat') {
+        showToast('New message from crew', 'info');
+      }
+    } else {
+      chatInitialized = true;
+    }
+
+    if (!silent || currentScreen === 'chat') scrollChatToBottom();
+    return true;
+  } catch (err) {
+    if (!chatInitialized) {
+      chatMessages = normalizeChatMessages(DEFAULT_CHAT_MESSAGES);
+      renderPassengerChat(chatMessages);
+      chatInitialized = true;
+      scrollChatToBottom();
+    }
+    if (!silent) console.error('Could not load passenger chat:', err);
+    return false;
+  }
+}
+
+async function sendChat() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2,'0');
-  const m = String(now.getMinutes()).padStart(2,'0');
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg passenger';
-  div.innerHTML = '<div class="msg-bubble">' + escapeHtml(text) + '</div><div class="msg-time">' + h + ':' + m + '</div>';
-  msgs.appendChild(div);
-  input.value = '';
-  scrollChatToBottom();
 
-  // Save to localStorage
-  const chatLog = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
-  chatLog.push({ from: 'passenger', text, time: now.getTime() });
-  localStorage.setItem('mhskyhub_chat', JSON.stringify(chatLog));
+  input.disabled = true;
 
-  // Simulate crew response
-  setTimeout(() => {
-    const resp = getCrewResponse(text);
-    const respDiv = document.createElement('div');
-    respDiv.className = 'msg crew';
-    respDiv.innerHTML = '<div class="msg-bubble">' + resp + '</div><div class="msg-time">' + h + ':' + String(parseInt(m)+1).padStart(2,'0') + '</div>';
-    msgs.appendChild(respDiv);
+  try {
+    const res = await fetch(`${API_BASE}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seat: PASSENGER_SEAT, from: 'passenger', text })
+    });
+    if (!res.ok) throw new Error('Chat send failed: ' + res.status);
+
+    const payload = await res.json();
+    chatMessages = normalizeChatMessages([...chatMessages, payload.message]);
+    renderPassengerChat(chatMessages);
+    input.value = '';
     scrollChatToBottom();
-  }, 1500);
-}
-
-function getCrewResponse(msg) {
-  const m = msg.toLowerCase();
-  if (m.includes('pillow')) return "I'll bring an extra pillow right away!";
-  if (m.includes('blanket')) return "Of course, one blanket coming up!";
-  if (m.includes('water') || m.includes('drink')) return "I'll bring you some water shortly. Still or sparkling?";
-  if (m.includes('food') || m.includes('meal') || m.includes('eat')) return "Our meal service will begin in approximately 20 minutes. You can also order snacks via the Order screen.";
-  if (m.includes('toilet') || m.includes('bathroom')) return "The nearest lavatory is in the mid-cabin, currently available.";
-  if (m.includes('help') || m.includes('assist')) return "Happy to help! What do you need?";
-  if (m.includes('thank')) return "You're most welcome! Let me know if you need anything else.";
-  if (m.includes('wifi') || m.includes('internet')) return "Wi-Fi is available. You can connect via the MH Wi-Fi network. Packages start from $4.99.";
-  return "Thank you for your message. A crew member will assist you shortly.";
+  } catch (err) {
+    showToast('Chat service is unavailable right now', 'info');
+    console.error('Could not send passenger chat:', err);
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
 }
 
 function escapeHtml(str) {
@@ -349,7 +451,7 @@ function setMiniRating(cat, n) {
   stars.forEach((s,i) => s.classList.toggle('active', i < n));
 }
 function submitFeedback() {
-  showToast('✓ Thank you for your feedback!', 'success');
+  showToast('Ã¢Å“â€œ Thank you for your feedback!', 'success');
 }
 
 // ============================================================
@@ -378,7 +480,7 @@ function refreshBluetoothWidget() {
   if (deviceMeta) {
     deviceMeta.textContent = bluetoothState.enabled
       ? (bluetoothState.connectedDevice
-        ? 'Connected for seat 14A entertainment · ' + bluetoothState.battery + '% battery remaining'
+        ? 'Connected for seat 14A entertainment Ã‚Â· ' + bluetoothState.battery + '% battery remaining'
         : 'Bluetooth is on and ready to pair with your headphones.')
       : 'Turn Bluetooth back on to reconnect your personal audio device.';
   }
@@ -407,7 +509,7 @@ function refreshBluetoothWidget() {
     const status = document.getElementById('bt-status-' + device.id);
     const connected = bluetoothState.enabled && bluetoothState.connectedDevice === device.name;
     if (card) card.classList.toggle('connected', connected);
-    if (status) status.textContent = connected ? 'Connected · ' + device.battery + '% battery' : 'Tap to connect';
+    if (status) status.textContent = connected ? 'Connected Ã‚Â· ' + device.battery + '% battery' : 'Tap to connect';
   });
 }
 
@@ -482,7 +584,7 @@ function setSeatPreset(el) {
   el.classList.add('active');
 }
 function savePreferences() {
-  showToast('✓ Preferences saved', 'success');
+  showToast('Ã¢Å“â€œ Preferences saved', 'success');
 }
 
 // ============================================================
@@ -532,8 +634,8 @@ function refreshTrackScreen() {
   document.getElementById('track-empty').style.display = 'none';
   document.getElementById('track-active').style.display = 'block';
 
-  document.getElementById('track-icon').textContent = activeRequest.icon || '☕';
-  document.getElementById('track-name').textContent = activeRequest.item + (activeRequest.qty > 1 ? ' × ' + activeRequest.qty : '');
+  document.getElementById('track-icon').textContent = activeRequest.icon || 'Ã¢Ëœâ€¢';
+  document.getElementById('track-name').textContent = activeRequest.item + (activeRequest.qty > 1 ? ' Ãƒâ€” ' + activeRequest.qty : '');
 
   const ago = Math.floor((Date.now() - activeRequest.timestamp) / 60000);
   document.getElementById('track-time').textContent = ago < 1 ? 'just now' : ago + ' min ago';
@@ -561,14 +663,14 @@ function updateProgressSteps(status) {
     label.classList.remove('done','active');
     if (i < currentStep) {
       dot.classList.add('done');
-      dot.textContent = '✓';
+      dot.textContent = 'Ã¢Å“â€œ';
       label.classList.add('done');
     } else if (i === currentStep) {
       dot.classList.add('active');
-      dot.textContent = '●';
+      dot.textContent = 'Ã¢â€”Â';
       label.classList.add('active');
     } else {
-      dot.textContent = '●';
+      dot.textContent = 'Ã¢â€”Â';
     }
     if (i < 4) {
       const line = document.getElementById('line-' + i);
@@ -615,10 +717,10 @@ function toggleLav(zone) {
   const statusEl = document.getElementById('lav-' + zone + '-status');
   if (!statusEl) return;
   if (lavStates[zone] === 'available') {
-    statusEl.textContent = '● Available';
+    statusEl.textContent = 'Ã¢â€”Â Available';
     statusEl.className = 'lav-status available';
   } else {
-    statusEl.textContent = '● Occupied';
+    statusEl.textContent = 'Ã¢â€”Â Occupied';
     statusEl.className = 'lav-status occupied';
   }
 }
@@ -652,7 +754,7 @@ function syncFromLocalStorage() {
   if (prevStatus !== updated.status) {
     const statusLabels = { preparing:'Crew is preparing your order', ontheway:'Your order is on the way!', delivered:'Your order has been delivered!' };
     if (statusLabels[updated.status]) {
-      showToast('✓ ' + statusLabels[updated.status], 'success');
+      showToast('Ã¢Å“â€œ ' + statusLabels[updated.status], 'success');
     }
     if (updated.status === 'delivered') {
       activeRequest = null;
@@ -672,7 +774,7 @@ function addHistory(req) {
   histEl.style.display = 'block';
   const div = document.createElement('div');
   div.className = 'history-item';
-  div.innerHTML = '<div class="history-icon">' + (req.icon||'📦') + '</div><div><div class="history-name">' + req.item + '</div><div class="history-meta">Delivered · Seat 14A</div></div><div class="history-done">✓</div>';
+  div.innerHTML = '<div class="history-icon">' + (req.icon||'Ã°Å¸â€œÂ¦') + '</div><div><div class="history-name">' + req.item + '</div><div class="history-meta">Delivered Ã‚Â· Seat 14A</div></div><div class="history-done">Ã¢Å“â€œ</div>';
   histEl.appendChild(div);
 }
 
@@ -683,12 +785,17 @@ function init() {
   updateClock();
   updateFlightMap();
   refreshBluetoothWidget();
+  fetchPassengerChatMessages();
+
   clockInterval = setInterval(() => {
     updateClock();
     updateFlightEta();
   }, 1000);
 
   syncInterval = setInterval(syncFromLocalStorage, 2000);
+  chatPollInterval = setInterval(() => {
+    fetchPassengerChatMessages({ silent: currentScreen !== 'chat' });
+  }, CHAT_POLL_MS);
 
   // Check for existing requests on load
   const reqs = JSON.parse(localStorage.getItem('mhskyhub_requests') || '[]');

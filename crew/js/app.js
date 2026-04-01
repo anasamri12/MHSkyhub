@@ -1,11 +1,49 @@
 // ============================================================
+// API
+// ============================================================
+const API_BASE = '/api';
+const DEFAULT_CHAT_SEAT = '14A';
+const CHAT_POLL_MS = 2500;
+
+// Example: load TV posters from backend and render into a container
+// Useful if you add a crew entertainment/briefing screen later
+async function loadTvPosters(containerEl) {
+  try {
+    const res     = await fetch(`${API_BASE}/posters/tv`);
+    const posters = await res.json();
+    containerEl.innerHTML = posters.map(p =>
+      `<div class="poster-card">
+         <img src="${p.url}" alt="${p.title}" loading="lazy">
+         <p>${p.title}</p>
+       </div>`
+    ).join('');
+  } catch (err) {
+    console.error('Could not load TV posters:', err);
+  }
+}
+
+// Example: log a crew action (status change) to the backend
+// Drop this call inside setDetailStatus() after syncStatusToPassenger(req)
+async function logCrewAction(text) {
+  try {
+    await fetch(`${API_BASE}/message`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ text, from: 'crew' })
+    });
+  } catch (err) {
+    console.error('Could not reach API (offline mode still works):', err);
+  }
+}
+
+// ============================================================
 // DATA
 // ============================================================
 const DEFAULT_REQUESTS = [
-  { id: 9001, seat: '22C', type: 'assist', item: 'Blanket', qty: 1, note: 'Extra soft if available', status: 'inprogress', timestamp: Date.now() - 3*60000, eta: 120, icon: '🛏', priority: 'normal' },
-  { id: 9002, seat: '08B', type: 'order', item: 'Water', qty: 2, note: '', status: 'new', timestamp: Date.now() - 1*60000, eta: 180, icon: '💧', priority: 'normal' },
-  { id: 9003, seat: '31F', type: 'assist', item: 'Cleaning', qty: 1, note: 'Spill at seat', status: 'inprogress', timestamp: Date.now() - 5*60000, eta: 60, icon: '🧹', priority: 'urgent' },
-  { id: 9004, seat: '05A', type: 'assist', item: 'Headset', qty: 1, note: '', status: 'completed', timestamp: Date.now() - 8*60000, eta: 0, icon: '🎧', priority: 'done' },
+  { id: 9001, seat: '22C', type: 'assist', item: 'Blanket', qty: 1, note: 'Extra soft if available', status: 'inprogress', timestamp: Date.now() - 3*60000, eta: 120, icon: 'Ã°Å¸â€ºÂ', priority: 'normal' },
+  { id: 9002, seat: '08B', type: 'order', item: 'Water', qty: 2, note: '', status: 'new', timestamp: Date.now() - 1*60000, eta: 180, icon: 'Ã°Å¸â€™Â§', priority: 'normal' },
+  { id: 9003, seat: '31F', type: 'assist', item: 'Cleaning', qty: 1, note: 'Spill at seat', status: 'inprogress', timestamp: Date.now() - 5*60000, eta: 60, icon: 'Ã°Å¸Â§Â¹', priority: 'urgent' },
+  { id: 9004, seat: '05A', type: 'assist', item: 'Headset', qty: 1, note: '', status: 'completed', timestamp: Date.now() - 8*60000, eta: 0, icon: 'Ã°Å¸Å½Â§', priority: 'done' },
 ];
 
 let requests = [];
@@ -14,18 +52,183 @@ let currentFilter = 'all';
 let syncInterval = null;
 let toastTimeout = null;
 let prevPassengerReqIds = new Set();
+let crewChatSeat = DEFAULT_CHAT_SEAT;
+let crewChatMessages = [];
+let crewChatInitialized = false;
+
+function normalizeChatSeat(seat) {
+  return normalizeSeatCode(seat || DEFAULT_CHAT_SEAT) || DEFAULT_CHAT_SEAT;
+}
+
+function formatChatTime(timestamp) {
+  return new Date(timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function normalizeCrewChatMessages(messages) {
+  return (messages || [])
+    .map((message, index) => ({
+      id: message.id ?? index + 1,
+      seat: normalizeChatSeat(message.seat),
+      from: message.from === 'crew' ? 'crew' : 'passenger',
+      text: String(message.text || ''),
+      timestamp: message.timestamp || new Date().toISOString()
+    }))
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+}
+
+function scrollCrewChatToBottom() {
+  setTimeout(() => {
+    const panel = document.getElementById('crew-chat-messages');
+    if (panel) panel.scrollTop = panel.scrollHeight;
+  }, 50);
+}
+
+function renderCrewChatSeatOptions(threads) {
+  const select = document.getElementById('crew-chat-seat');
+  const meta = document.getElementById('crew-chat-meta');
+  if (!select) return;
+
+  const seats = Array.from(new Set([
+    DEFAULT_CHAT_SEAT,
+    ...requests.map(req => normalizeChatSeat(req.seat)),
+    ...(threads || []).map(thread => normalizeChatSeat(thread.seat))
+  ])).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  if (!seats.includes(crewChatSeat)) crewChatSeat = seats[0] || DEFAULT_CHAT_SEAT;
+
+  select.innerHTML = seats.map(seat => `<option value="${seat}">Seat ${seat}</option>`).join('');
+  select.value = crewChatSeat;
+
+  const activeThread = (threads || []).find(thread => normalizeChatSeat(thread.seat) === crewChatSeat);
+  if (meta) {
+    meta.textContent = activeThread
+      ? `${activeThread.messageCount} messages - last ${formatChatTime(activeThread.updatedAt)}`
+      : `Seat ${crewChatSeat} - waiting for messages`;
+  }
+}
+
+function renderCrewChatMessages(messages) {
+  const panel = document.getElementById('crew-chat-messages');
+  if (!panel) return;
+
+  if (!messages.length) {
+    panel.innerHTML = `<div class="crew-chat-empty">No messages yet for Seat ${crewChatSeat}. When the passenger sends a message, it will appear here.</div>`;
+    return;
+  }
+
+  panel.innerHTML = messages.map(message =>
+    '<div class="crew-chat-row ' + message.from + '">' +
+      '<div class="crew-chat-bubble">' + escapeHtml(message.text) + '</div>' +
+      '<div class="crew-chat-time">' + formatChatTime(message.timestamp) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+async function fetchCrewChatThreads(silent) {
+  try {
+    const res = await fetch(`${API_BASE}/chat/threads`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Thread fetch failed: ' + res.status);
+    const payload = await res.json();
+    renderCrewChatSeatOptions(payload.threads || []);
+    return payload.threads || [];
+  } catch (err) {
+    if (!silent) console.error('Could not load crew chat threads:', err);
+    renderCrewChatSeatOptions([]);
+    return [];
+  }
+}
+
+async function fetchCrewChatMessages(silent) {
+  const quiet = silent === true;
+  const seat = normalizeChatSeat(crewChatSeat);
+  const previousLastId = crewChatMessages.length ? crewChatMessages[crewChatMessages.length - 1].id : 0;
+
+  try {
+    const res = await fetch(`${API_BASE}/chat?seat=${encodeURIComponent(seat)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Chat fetch failed: ' + res.status);
+
+    const payload = await res.json();
+    crewChatSeat = normalizeChatSeat(payload.seat || seat);
+    crewChatMessages = normalizeCrewChatMessages(payload.messages);
+    renderCrewChatMessages(crewChatMessages);
+
+    if (crewChatInitialized) {
+      const newPassengerMessages = crewChatMessages.filter(message => message.id > previousLastId && message.from === 'passenger');
+      if (newPassengerMessages.length) {
+        showToast(`New chat from Seat ${crewChatSeat}`, 'alert');
+      }
+    } else {
+      crewChatInitialized = true;
+    }
+
+    if (!quiet) scrollCrewChatToBottom();
+    return true;
+  } catch (err) {
+    if (!quiet) console.error('Could not load crew chat:', err);
+    renderCrewChatMessages([]);
+    return false;
+  }
+}
+
+function changeCrewChatSeat(seat) {
+  crewChatSeat = normalizeChatSeat(seat);
+  crewChatMessages = [];
+  crewChatInitialized = false;
+  fetchCrewChatMessages(false);
+  fetchCrewChatThreads(true);
+}
+
+async function sendCrewChat() {
+  const input = document.getElementById('crew-chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seat: normalizeChatSeat(crewChatSeat), from: 'crew', text })
+    });
+    if (!res.ok) throw new Error('Chat send failed: ' + res.status);
+
+    const payload = await res.json();
+    crewChatMessages = normalizeCrewChatMessages([...crewChatMessages, payload.message]);
+    renderCrewChatMessages(crewChatMessages);
+    input.value = '';
+    scrollCrewChatToBottom();
+    await fetchCrewChatThreads(true);
+  } catch (err) {
+    showToast('Crew chat is unavailable right now', 'info');
+    console.error('Could not send crew chat:', err);
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
+}
 
 // ============================================================
 // INIT
 // ============================================================
-function init() {
+async function init() {
   loadRequests();
   renderSidebar();
   renderCabinMap();
   updateBadges();
   updateClock();
   setInterval(updateClock, 1000);
-  syncInterval = setInterval(syncFromPassenger, 2000);
+  await fetchCrewChatThreads(false);
+  await fetchCrewChatMessages(false);
+  syncInterval = setInterval(() => {
+    syncFromPassenger();
+    fetchCrewChatThreads(true);
+    fetchCrewChatMessages(true);
+  }, CHAT_POLL_MS);
 
   // Section filter buttons
   document.querySelectorAll('.section-filter-btn').forEach(btn => {
@@ -61,7 +264,7 @@ function syncFromPassenger() {
       requests.unshift(r);
       if (!prevPassengerReqIds.has(r.id)) {
         prevPassengerReqIds.add(r.id);
-        showToast('🔔 New request from Seat ' + r.seat + ' — ' + r.item, 'alert');
+        showToast('New request from Seat ' + r.seat + ' - ' + r.item, 'alert');
         updateBadges();
         renderSidebar();
         renderCabinMap();
@@ -138,8 +341,8 @@ function renderSidebar() {
         <div class="rc-status ${statusClass}">${statusLabel}</div>
       </div>
       <div class="rc-mid">
-        <div class="rc-icon">${r.icon || '📦'}</div>
-        <div class="rc-item">${r.item}${r.qty > 1 ? ' ×' + r.qty : ''}</div>
+        <div class="rc-icon">${r.icon || 'Ã°Å¸â€œÂ¦'}</div>
+        <div class="rc-item">${r.item}${r.qty > 1 ? ' Ãƒâ€”' + r.qty : ''}</div>
       </div>
       <div class="rc-bot">
         <div class="rc-time">${ago}</div>
@@ -151,7 +354,7 @@ function renderSidebar() {
 }
 
 function getStatusLabel(s) {
-  const m = { new:'● New', inprogress:'● In Progress', completed:'✓ Done', delivered:'✓ Delivered', cancelled:'Cancelled', preparing:'Preparing', ontheway:'On the Way' };
+  const m = { new:'Ã¢â€”Â New', inprogress:'Ã¢â€”Â In Progress', completed:'Ã¢Å“â€œ Done', delivered:'Ã¢Å“â€œ Delivered', cancelled:'Cancelled', preparing:'Preparing', ontheway:'On the Way' };
   return m[s] || s;
 }
 function getStatusClass(s) {
@@ -213,7 +416,7 @@ function buildSeatCluster(row, letters, seatStatus, type, extraClass) {
     const stateClass = status ? getSeatClass(status) + ' has-request' : '';
     const seatClass = type === 'business' ? 'business' : '';
     const bubbleClass = ['seat-bubble', seatClass, stateClass].filter(Boolean).join(' ');
-    return `<div class="${bubbleClass}" title="${seatCode}${status ? ' · ' + getStatusLabel(status) : ''}">${status ? letter : ''}</div>`;
+    return `<div class="${bubbleClass}" title="${seatCode}${status ? ' Ã‚Â· ' + getStatusLabel(status) : ''}">${status ? letter : ''}</div>`;
   }).join('') + `</div>`;
 }
 
@@ -247,7 +450,7 @@ function renderCabinMap() {
       rows: [1, 2, 3, 4, 5, 6],
       clusters: [['A'], ['D', 'G'], ['K']]
     },
-    { breakLabel: 'Door 2 · Galley' },
+    { breakLabel: 'Door 2 Ã‚Â· Galley' },
     {
       title: 'Economy Forward',
       rowsLabel: 'Rows 7-20',
@@ -255,7 +458,7 @@ function renderCabinMap() {
       rows: Array.from({ length: 14 }, (_, i) => i + 7),
       clusters: [['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'K']]
     },
-    { breakLabel: 'Door 4 · Cross Aisle' },
+    { breakLabel: 'Door 4 Ã‚Â· Cross Aisle' },
     {
       title: 'Economy Rear',
       rowsLabel: 'Rows 21-32',
@@ -307,12 +510,12 @@ function selectRequest(id) {
   // Populate detail
   document.getElementById('detail-seat').textContent = req.seat;
   document.getElementById('detail-class').textContent = getCabinClass(req.seat);
-  document.getElementById('detail-icon').textContent = req.icon || '📦';
-  document.getElementById('detail-item-name').textContent = req.item + (req.qty > 1 ? ' ×' + req.qty : '');
+  document.getElementById('detail-icon').textContent = req.icon || 'Ã°Å¸â€œÂ¦';
+  document.getElementById('detail-item-name').textContent = req.item + (req.qty > 1 ? ' Ãƒâ€”' + req.qty : '');
 
   const ago = getTimeAgo(req.timestamp);
   const timeStr = new Date(req.timestamp).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
-  document.getElementById('detail-meta').textContent = 'Submitted ' + timeStr + ' · ' + ago;
+  document.getElementById('detail-meta').textContent = 'Submitted ' + timeStr + ' Ã‚Â· ' + ago;
 
   if (req.note) {
     document.getElementById('detail-note-block').style.display = 'block';
@@ -383,7 +586,7 @@ function setDetailStatus(status) {
   renderCabinMap();
 
   const labels = { preparing:'Marked as Preparing', ontheway:'Marked as On the Way', delivered:'Marked as Delivered', new:'Reset to Received' };
-  showToast('✓ ' + (labels[status] || status), 'success');
+  showToast('Ã¢Å“â€œ ' + (labels[status] || status), 'success');
 }
 
 function markComplete() {
