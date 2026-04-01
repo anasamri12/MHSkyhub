@@ -4,8 +4,8 @@ Static dual-interface prototype for the MHSkyhub passenger infotainment screen a
 
 ## Live demo
 
-- Passenger: https://iridescent-treacle-a1a40a.netlify.app/passenger/index.html
-- Crew: https://iridescent-treacle-a1a40a.netlify.app/crew/index.html
+- Passenger: https://mhskyhub.netlify.app/passenger/index.html
+- Crew: https://mhskyhub.netlify.app/crew/index.html
 
 ## Project structure
 
