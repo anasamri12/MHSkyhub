@@ -232,11 +232,14 @@
   .cat-count { font-size:11px; color:var(--text-muted); margin-top:3px; }
   .item-row { background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:14px; padding:14px; display:flex; align-items:center; gap:14px; cursor:pointer; margin-bottom:10px; transition:all 0.2s; }
   .item-row:hover { background:rgba(244,239,227,0.09); border-color:rgba(232,215,178,0.32); }
+  .item-row-disabled { opacity:0.66; }
+  .item-row-disabled:hover { background:var(--glass-bg); border-color:var(--glass-border); transform:none; }
   .item-emoji-box { width:52px; height:52px; background:rgba(255,255,255,0.08); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0; }
   .item-info { flex:1; }
   .item-name { font-size:14px; font-weight:600; margin-bottom:3px; }
   .item-desc { font-size:11px; color:var(--text-secondary); }
   .item-price { font-size:12px; font-weight:600; color:var(--success); flex-shrink:0; }
+  .item-price-out { color:var(--red-bright); }
   .item-chevron { color:var(--text-muted); font-size:16px; flex-shrink:0; }
   .detail-hero { background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:var(--radius); padding:24px; display:flex; gap:20px; margin-bottom:20px; align-items:center; }
   .detail-emoji { width:90px; height:90px; background:rgba(255,255,255,0.08); border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:48px; flex-shrink:0; }
