@@ -1,11 +1,12 @@
 # MHSkyhub
 
-Static dual-interface prototype for the MHSkyhub passenger infotainment screen and the cabin crew tablet dashboard.
+Dual-interface cabin experience prototype with a passenger infotainment app, a crew dashboard, and a lightweight Express backend for live syncing.
 
-## Live demo
+## Apps
 
-- Passenger: https://iridescent-treacle-a1a40a.netlify.app/passenger/index.html
-- Crew: https://iridescent-treacle-a1a40a.netlify.app/crew/index.html
+- Passenger app: `passenger/`
+- Crew app: `crew/`
+- Backend API + Socket.io: `backend/`
 
 ## Project structure
 
@@ -17,25 +18,72 @@ MHSkyhub/
 |  |  |- movies/
 |  |  `- tv/
 |  `- widgets/
-|- passenger/
-|  |- css/
-|  |  `- main.css
-|  |- js/
-|  |  `- app.js
-|  `- index.html
+|- backend/
+|  |- db.js
+|  |- server.js
+|  `- package.json
 |- crew/
 |  |- css/
-|  |  `- main.css
 |  |- js/
-|  |  `- app.js
+|  |  |- app.js
+|  |  `- backend-sync.js
+|  `- index.html
+|- passenger/
+|  |- css/
+|  |- js/
+|  |  |- app.js
+|  |  `- backend-sync.js
 |  `- index.html
 |- tools/
-`- index.html / crew.html
+|- .env
+|- .gitignore
+|- index.html
+`- crew.html
 ```
 
-## Notes
+## What is live now
 
-- `passenger/` contains the passenger-facing infotainment app for the seatback display.
-- `crew/` contains the crew-facing request dashboard for the cabin tablet.
-- `assets/` is shared by both devices so branding, posters, and widget artwork stay in one place.
-- Root `index.html` and `crew.html` are lightweight redirect entry points for convenience.
+- Passenger and crew chat sync through the backend API and Socket.io.
+- Passenger service requests are stored in SQLite instead of browser `localStorage`.
+- Crew status changes update the passenger tracking screen across separate devices.
+- Demo authentication route is available at `POST /api/auth/login` using JWT responses.
+
+## Run locally
+
+1. Install backend dependencies:
+   ```bash
+   cd backend
+   npm install
+   ```
+2. Start the backend:
+   ```bash
+   npm run dev
+   ```
+3. Open the apps:
+   - Passenger: `http://localhost:5000/passenger`
+   - Crew: `http://localhost:5000/crew`
+
+## Demo credentials
+
+- Crew: `crew` / `mhcrew123`
+- Passenger: `passenger14a` / `mhpass123`
+
+## API summary
+
+- `POST /api/auth/login`
+- `GET /api/chat?seat=14A`
+- `POST /api/chat`
+- `GET /api/chat/threads`
+- `GET /api/requests`
+- `GET /api/requests?seat=14A`
+- `PUT /api/requests/:id`
+- `PATCH /api/requests/:id`
+
+## Persistence
+
+- SQLite database file: `backend/data/mhskyhub.sqlite`
+- Database bootstrap and seed logic: `backend/db.js`
+
+## Deploy note
+
+For deployment, run the backend with `npm start` and place it behind a reverse proxy or deploy it to a platform such as Railway or Render.

@@ -40,10 +40,10 @@ async function logCrewAction(text) {
 // DATA
 // ============================================================
 const DEFAULT_REQUESTS = [
-  { id: 9001, seat: '22C', type: 'assist', item: 'Blanket', qty: 1, note: 'Extra soft if available', status: 'inprogress', timestamp: Date.now() - 3*60000, eta: 120, icon: 'Ã°Å¸â€ºÂ', priority: 'normal' },
-  { id: 9002, seat: '08B', type: 'order', item: 'Water', qty: 2, note: '', status: 'new', timestamp: Date.now() - 1*60000, eta: 180, icon: 'Ã°Å¸â€™Â§', priority: 'normal' },
-  { id: 9003, seat: '31F', type: 'assist', item: 'Cleaning', qty: 1, note: 'Spill at seat', status: 'inprogress', timestamp: Date.now() - 5*60000, eta: 60, icon: 'Ã°Å¸Â§Â¹', priority: 'urgent' },
-  { id: 9004, seat: '05A', type: 'assist', item: 'Headset', qty: 1, note: '', status: 'completed', timestamp: Date.now() - 8*60000, eta: 0, icon: 'Ã°Å¸Å½Â§', priority: 'done' },
+  { id: 9001, seat: '22C', type: 'assist', item: 'Blanket', qty: 1, note: 'Extra soft if available', status: 'inprogress', timestamp: Date.now() - 3*60000, eta: 120, icon: '\uD83D\uDECF', priority: 'normal' },
+  { id: 9002, seat: '08B', type: 'order', item: 'Water', qty: 2, note: '', status: 'new', timestamp: Date.now() - 1*60000, eta: 180, icon: '\uD83D\uDCA7', priority: 'normal' },
+  { id: 9003, seat: '31F', type: 'assist', item: 'Cleaning', qty: 1, note: 'Spill at seat', status: 'inprogress', timestamp: Date.now() - 5*60000, eta: 60, icon: '\uD83E\uDDF9', priority: 'urgent' },
+  { id: 9004, seat: '05A', type: 'assist', item: 'Headset', qty: 1, note: '', status: 'completed', timestamp: Date.now() - 8*60000, eta: 0, icon: '\uD83C\uDFA7', priority: 'done' },
 ];
 
 let requests = [];
@@ -55,6 +55,34 @@ let prevPassengerReqIds = new Set();
 let crewChatSeat = DEFAULT_CHAT_SEAT;
 let crewChatMessages = [];
 let crewChatInitialized = false;
+
+function hasUsableIcon(icon) {
+  const value = String(icon || '').trim();
+  return Boolean(value) && !/^(?:\?+|\uFFFD+)$/u.test(value) && !/[\u00C3\u00C2\u00E2\u00F0]/u.test(value);
+}
+
+function inferRequestIcon(request) {
+  const item = String((request && request.item) || '').trim().toLowerCase();
+  const type = String((request && request.type) || '').trim().toLowerCase();
+
+  if (item.includes('teh tarik') || item.includes('coffee') || item.includes('tea') || item.includes('hot drink')) return '\u2615';
+  if (item.includes('water')) return '\uD83D\uDCA7';
+  if (item.includes('juice')) return '\uD83E\uDDC3';
+  if (item.includes('blanket') || item.includes('pillow')) return '\uD83D\uDECF';
+  if (item.includes('cleaning') || item.includes('spill')) return '\uD83E\uDDF9';
+  if (item.includes('headset') || item.includes('headphone')) return '\uD83C\uDFA7';
+  if (item.includes('medical') || item.includes('medicine')) return '\uD83D\uDC8A';
+  if (item.includes('child') || item.includes('baby')) return '\uD83D\uDC76';
+  if (item.includes('toiletries')) return '\uD83E\uDDF4';
+  if (item.includes('accessibility')) return '\u267F';
+  if (type === 'assist') return '\uD83D\uDECE';
+  return '\u2615';
+}
+
+function getRequestIcon(request) {
+  if (hasUsableIcon(request && request.icon)) return String(request.icon).trim();
+  return inferRequestIcon(request);
+}
 
 function normalizeChatSeat(seat) {
   return normalizeSeatCode(seat || DEFAULT_CHAT_SEAT) || DEFAULT_CHAT_SEAT;
@@ -341,8 +369,8 @@ function renderSidebar() {
         <div class="rc-status ${statusClass}">${statusLabel}</div>
       </div>
       <div class="rc-mid">
-        <div class="rc-icon">${r.icon || 'Ã°Å¸â€œÂ¦'}</div>
-        <div class="rc-item">${r.item}${r.qty > 1 ? ' Ãƒâ€”' + r.qty : ''}</div>
+        <div class="rc-icon">${getRequestIcon(r)}</div>
+        <div class="rc-item">${r.item}${r.qty > 1 ? ' \u00D7' + r.qty : ''}</div>
       </div>
       <div class="rc-bot">
         <div class="rc-time">${ago}</div>
@@ -354,7 +382,7 @@ function renderSidebar() {
 }
 
 function getStatusLabel(s) {
-  const m = { new:'Ã¢â€”Â New', inprogress:'Ã¢â€”Â In Progress', completed:'Ã¢Å“â€œ Done', delivered:'Ã¢Å“â€œ Delivered', cancelled:'Cancelled', preparing:'Preparing', ontheway:'On the Way' };
+  const m = { new:'\u25CF New', inprogress:'\u25CF In Progress', completed:'\u2713 Done', delivered:'\u2713 Delivered', cancelled:'Cancelled', preparing:'Preparing', ontheway:'On the Way' };
   return m[s] || s;
 }
 function getStatusClass(s) {
@@ -416,7 +444,7 @@ function buildSeatCluster(row, letters, seatStatus, type, extraClass) {
     const stateClass = status ? getSeatClass(status) + ' has-request' : '';
     const seatClass = type === 'business' ? 'business' : '';
     const bubbleClass = ['seat-bubble', seatClass, stateClass].filter(Boolean).join(' ');
-    return `<div class="${bubbleClass}" title="${seatCode}${status ? ' Ã‚Â· ' + getStatusLabel(status) : ''}">${status ? letter : ''}</div>`;
+    return `<div class="${bubbleClass}" title="${seatCode}${status ? ' - ' + getStatusLabel(status) : ''}">${status ? letter : ''}</div>`;
   }).join('') + `</div>`;
 }
 
@@ -450,7 +478,7 @@ function renderCabinMap() {
       rows: [1, 2, 3, 4, 5, 6],
       clusters: [['A'], ['D', 'G'], ['K']]
     },
-    { breakLabel: 'Door 2 Ã‚Â· Galley' },
+    { breakLabel: 'Door 2 - Galley' },
     {
       title: 'Economy Forward',
       rowsLabel: 'Rows 7-20',
@@ -458,7 +486,7 @@ function renderCabinMap() {
       rows: Array.from({ length: 14 }, (_, i) => i + 7),
       clusters: [['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'K']]
     },
-    { breakLabel: 'Door 4 Ã‚Â· Cross Aisle' },
+    { breakLabel: 'Door 4 - Cross Aisle' },
     {
       title: 'Economy Rear',
       rowsLabel: 'Rows 21-32',
@@ -500,22 +528,18 @@ function selectRequest(id) {
   const req = requests.find(r => r.id === id);
   if (!req) return;
 
-  // Highlight in sidebar
   renderSidebar();
-
-  // Show detail panel, hide default
   document.getElementById('panel-default').style.display = 'none';
   document.getElementById('panel-detail').classList.add('active');
 
-  // Populate detail
   document.getElementById('detail-seat').textContent = req.seat;
   document.getElementById('detail-class').textContent = getCabinClass(req.seat);
-  document.getElementById('detail-icon').textContent = req.icon || 'Ã°Å¸â€œÂ¦';
-  document.getElementById('detail-item-name').textContent = req.item + (req.qty > 1 ? ' Ãƒâ€”' + req.qty : '');
+  document.getElementById('detail-icon').textContent = getRequestIcon(req);
+  document.getElementById('detail-item-name').textContent = req.item + (req.qty > 1 ? ' \u00D7' + req.qty : '');
 
   const ago = getTimeAgo(req.timestamp);
   const timeStr = new Date(req.timestamp).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
-  document.getElementById('detail-meta').textContent = 'Submitted ' + timeStr + ' Ã‚Â· ' + ago;
+  document.getElementById('detail-meta').textContent = 'Submitted ' + timeStr + ' - ' + ago;
 
   if (req.note) {
     document.getElementById('detail-note-block').style.display = 'block';
@@ -525,8 +549,6 @@ function selectRequest(id) {
   }
 
   updateDetailStatus(req.status);
-
-  // Scroll to top
   document.getElementById('right-panel').scrollTop = 0;
 }
 
@@ -586,7 +608,7 @@ function setDetailStatus(status) {
   renderCabinMap();
 
   const labels = { preparing:'Marked as Preparing', ontheway:'Marked as On the Way', delivered:'Marked as Delivered', new:'Reset to Received' };
-  showToast('Ã¢Å“â€œ ' + (labels[status] || status), 'success');
+  showToast(labels[status] || status, 'success');
 }
 
 function markComplete() {

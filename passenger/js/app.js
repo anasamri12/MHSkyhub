@@ -169,7 +169,7 @@ function interpolateRoutePosition(progress) {
 }
 
 function formatCoordinate(value, positiveLabel, negativeLabel) {
-  return Math.abs(value).toFixed(1) + 'Ã‚Â°' + (value >= 0 ? positiveLabel : negativeLabel);
+  return Math.abs(value).toFixed(1) + '\u00B0' + (value >= 0 ? positiveLabel : negativeLabel);
 }
 
 function updateFlightMap() {
@@ -200,7 +200,7 @@ function updateFlightMap() {
   if (mapLocation) mapLocation.textContent = routePosition.label;
   if (mapCoords) mapCoords.textContent = formatCoordinate(routePosition.lat, 'N', 'S') + ', ' + formatCoordinate(routePosition.lon, 'E', 'W');
   if (mapProgressText) mapProgressText.textContent = percent + '%';
-  if (mapProgressSub) mapProgressSub.textContent = flownHours + 'h ' + String(flownMins).padStart(2,'0') + 'm flown Ã‚Â· ' + document.getElementById('fi-eta').textContent + ' remaining';
+  if (mapProgressSub) mapProgressSub.textContent = flownHours + 'h ' + String(flownMins).padStart(2,'0') + 'm flown - ' + document.getElementById('fi-eta').textContent + ' remaining';
 }
 
 // ============================================================
@@ -241,9 +241,9 @@ function changeQty(delta) {
   document.getElementById('qty-val').textContent = orderQty;
 }
 function showOrderConfirmModal() {
-  document.getElementById('modal-icon').textContent = 'Ã¢Ëœâ€¢';
+  document.getElementById('modal-icon').textContent = '\u2615';
   document.getElementById('modal-title').textContent = 'Confirm Your Order';
-  document.getElementById('modal-body').textContent = 'Teh Tarik Ãƒâ€” ' + orderQty + '\nYour order will be sent to cabin crew immediately.';
+  document.getElementById('modal-body').textContent = 'Teh Tarik \u00D7 ' + orderQty + '\nYour order will be sent to cabin crew immediately.';
   document.getElementById('modal-overlay').classList.add('show');
 }
 function closeModal() {
@@ -262,7 +262,7 @@ function placeOrder() {
     status: 'new',
     timestamp: Date.now(),
     eta: 360,
-    icon: 'Ã¢Ëœâ€¢'
+    icon: '\u2615'
   };
   saveRequest(req);
   activeRequest = req;
@@ -270,7 +270,7 @@ function placeOrder() {
   startEtaCountdown();
   showActiveBanner();
   document.getElementById('order-badge').classList.add('show');
-  showToast('Ã¢Å“â€œ Order placed! Tracking your Teh Tarik.', 'success');
+  showToast('Order placed! Tracking your Teh Tarik.', 'success');
   navigateTo('track');
 }
 
@@ -287,12 +287,23 @@ function saveRequest(req) {
 // ============================================================
 let assistSelected = null;
 let assistIcon = '';
+const ASSIST_ICONS = {
+  blanket: '\uD83D\uDECF',
+  water: '\uD83D\uDCA7',
+  cleaning: '\uD83E\uDDF9',
+  headset: '\uD83C\uDFA7',
+  medical: '\uD83D\uDC8A',
+  child: '\uD83D\uDC76',
+  toiletries: '\uD83E\uDDF4',
+  accessibility: '\u267F',
+  other: '\u2753'
+};
 
 function selectAssist(el, icon, label) {
   document.querySelectorAll('.assist-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
   assistSelected = label;
-  assistIcon = icon;
+  assistIcon = ASSIST_ICONS[icon] || icon;
 }
 
 function sendAssistRequest() {
@@ -319,9 +330,8 @@ function sendAssistRequest() {
   startEtaCountdown();
   showActiveBanner();
   document.getElementById('order-badge').classList.add('show');
-  showToast('Ã¢Å“â€œ Assistance requested: ' + assistSelected, 'success');
+  showToast('Assistance requested: ' + assistSelected, 'success');
   navigateTo('track');
-  // Reset
   document.querySelectorAll('.assist-card').forEach(c => c.classList.remove('selected'));
   document.getElementById('assist-note').value = '';
   assistSelected = null;
@@ -451,7 +461,7 @@ function setMiniRating(cat, n) {
   stars.forEach((s,i) => s.classList.toggle('active', i < n));
 }
 function submitFeedback() {
-  showToast('Ã¢Å“â€œ Thank you for your feedback!', 'success');
+  showToast('Thank you for your feedback!', 'success');
 }
 
 // ============================================================
@@ -480,7 +490,7 @@ function refreshBluetoothWidget() {
   if (deviceMeta) {
     deviceMeta.textContent = bluetoothState.enabled
       ? (bluetoothState.connectedDevice
-        ? 'Connected for seat 14A entertainment Ã‚Â· ' + bluetoothState.battery + '% battery remaining'
+        ? 'Connected for seat 14A entertainment - ' + bluetoothState.battery + '% battery remaining'
         : 'Bluetooth is on and ready to pair with your headphones.')
       : 'Turn Bluetooth back on to reconnect your personal audio device.';
   }
@@ -509,7 +519,7 @@ function refreshBluetoothWidget() {
     const status = document.getElementById('bt-status-' + device.id);
     const connected = bluetoothState.enabled && bluetoothState.connectedDevice === device.name;
     if (card) card.classList.toggle('connected', connected);
-    if (status) status.textContent = connected ? 'Connected Ã‚Â· ' + device.battery + '% battery' : 'Tap to connect';
+    if (status) status.textContent = connected ? 'Connected - ' + device.battery + '% battery' : 'Tap to connect';
   });
 }
 
@@ -584,7 +594,7 @@ function setSeatPreset(el) {
   el.classList.add('active');
 }
 function savePreferences() {
-  showToast('Ã¢Å“â€œ Preferences saved', 'success');
+  showToast('Preferences saved', 'success');
 }
 
 // ============================================================
@@ -616,7 +626,6 @@ function updateTrackDisplay() {
 
 function refreshTrackScreen() {
   if (!activeRequest) {
-    // Check localStorage
     const reqs = JSON.parse(localStorage.getItem('mhskyhub_requests') || '[]');
     const pending = reqs.filter(r => r.status !== 'delivered').pop();
     if (pending) {
@@ -634,8 +643,8 @@ function refreshTrackScreen() {
   document.getElementById('track-empty').style.display = 'none';
   document.getElementById('track-active').style.display = 'block';
 
-  document.getElementById('track-icon').textContent = activeRequest.icon || 'Ã¢Ëœâ€¢';
-  document.getElementById('track-name').textContent = activeRequest.item + (activeRequest.qty > 1 ? ' Ãƒâ€” ' + activeRequest.qty : '');
+  document.getElementById('track-icon').textContent = activeRequest.icon || '\u2615';
+  document.getElementById('track-name').textContent = activeRequest.item + (activeRequest.qty > 1 ? ' \u00D7 ' + activeRequest.qty : '');
 
   const ago = Math.floor((Date.now() - activeRequest.timestamp) / 60000);
   document.getElementById('track-time').textContent = ago < 1 ? 'just now' : ago + ' min ago';
@@ -643,7 +652,6 @@ function refreshTrackScreen() {
   updateTrackDisplay();
   updateProgressSteps(activeRequest.status);
 
-  // Show/hide cancel button
   const cancelBtn = document.getElementById('track-cancel-btn');
   if (cancelBtn) {
     cancelBtn.style.display = (activeRequest.status === 'new' || activeRequest.status === 'preparing') ? 'block' : 'none';
@@ -663,14 +671,14 @@ function updateProgressSteps(status) {
     label.classList.remove('done','active');
     if (i < currentStep) {
       dot.classList.add('done');
-      dot.textContent = 'Ã¢Å“â€œ';
+      dot.textContent = '\u2713';
       label.classList.add('done');
     } else if (i === currentStep) {
       dot.classList.add('active');
-      dot.textContent = 'Ã¢â€”Â';
+      dot.textContent = '\u25CF';
       label.classList.add('active');
     } else {
-      dot.textContent = 'Ã¢â€”Â';
+      dot.textContent = '\u25CF';
     }
     if (i < 4) {
       const line = document.getElementById('line-' + i);
@@ -717,10 +725,10 @@ function toggleLav(zone) {
   const statusEl = document.getElementById('lav-' + zone + '-status');
   if (!statusEl) return;
   if (lavStates[zone] === 'available') {
-    statusEl.textContent = 'Ã¢â€”Â Available';
+    statusEl.textContent = '\u25CF Available';
     statusEl.className = 'lav-status available';
   } else {
-    statusEl.textContent = 'Ã¢â€”Â Occupied';
+    statusEl.textContent = '\u25CF Occupied';
     statusEl.className = 'lav-status occupied';
   }
 }
@@ -754,7 +762,7 @@ function syncFromLocalStorage() {
   if (prevStatus !== updated.status) {
     const statusLabels = { preparing:'Crew is preparing your order', ontheway:'Your order is on the way!', delivered:'Your order has been delivered!' };
     if (statusLabels[updated.status]) {
-      showToast('Ã¢Å“â€œ ' + statusLabels[updated.status], 'success');
+      showToast(statusLabels[updated.status], 'success');
     }
     if (updated.status === 'delivered') {
       activeRequest = null;
@@ -774,7 +782,7 @@ function addHistory(req) {
   histEl.style.display = 'block';
   const div = document.createElement('div');
   div.className = 'history-item';
-  div.innerHTML = '<div class="history-icon">' + (req.icon||'Ã°Å¸â€œÂ¦') + '</div><div><div class="history-name">' + req.item + '</div><div class="history-meta">Delivered Ã‚Â· Seat 14A</div></div><div class="history-done">Ã¢Å“â€œ</div>';
+  div.innerHTML = '<div class="history-icon">' + (req.icon||'\u2615') + '</div><div><div class="history-name">' + req.item + '</div><div class="history-meta">Delivered - Seat 14A</div></div><div class="history-done">\u2713</div>';
   histEl.appendChild(div);
 }
 
