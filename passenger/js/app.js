@@ -238,7 +238,7 @@ function placeOrder() {
   const note = document.getElementById('order-note').value;
   const req = {
     id: Date.now(),
-    seat: '14A',
+    seat: '17A',
     type: 'order',
     item: 'Teh Tarik',
     qty: orderQty,
@@ -287,7 +287,7 @@ function sendAssistRequest() {
   const note = document.getElementById('assist-note').value;
   const req = {
     id: Date.now(),
-    seat: '14A',
+    seat: '17A',
     type: 'assist',
     item: assistSelected,
     qty: 1,
