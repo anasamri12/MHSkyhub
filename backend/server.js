@@ -14,6 +14,7 @@ const {
   listChatThreads,
   createChatMessage,
   listRequests,
+  listMenuItems,
   getRequestById,
   upsertRequest,
   updateRequest
@@ -66,6 +67,57 @@ function buildToken(user) {
     JWT_SECRET,
     { expiresIn: '12h' }
   );
+}
+
+function extractBearerToken(headerValue) {
+  const match = String(headerValue || '').match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
+}
+
+function verifyToken(token) {
+  try {
+    return jwt.verify(String(token || '').trim(), JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+}
+
+function getRequestUser(req) {
+  if (Object.prototype.hasOwnProperty.call(req, 'authUser')) return req.authUser;
+  const token = extractBearerToken(req.get('authorization'));
+  req.authUser = token ? verifyToken(token) : null;
+  return req.authUser;
+}
+
+function requireAuthenticatedUser(req, res, next) {
+  const user = getRequestUser(req);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+  req.user = user;
+  return next();
+}
+
+function requireCrewUser(req, res, next) {
+  const user = getRequestUser(req);
+  if (!user) return res.status(401).json({ error: 'Crew authentication required' });
+  if (user.role !== 'crew') return res.status(403).json({ error: 'Crew access required' });
+  req.user = user;
+  return next();
+}
+
+
+function isPassengerSelfCancelPatch(existingRequest, patch) {
+  if (!existingRequest || !patch) return false;
+
+  const keys = Object.keys(patch);
+  const claimedSeat = Object.prototype.hasOwnProperty.call(patch, 'seat') ? normalizeSeat(patch.seat) : '';
+  const status = String(patch.status || '').trim().toLowerCase();
+  const etaValue = Object.prototype.hasOwnProperty.call(patch, 'eta') ? Number(patch.eta) : 0;
+
+  return Boolean(claimedSeat)
+    && claimedSeat === normalizeSeat(existingRequest.seat)
+    && status === 'cancelled'
+    && keys.every(key => ['seat', 'status', 'eta'].includes(key))
+    && (!Object.prototype.hasOwnProperty.call(patch, 'eta') || etaValue === 0);
 }
 
 function emitChatMessage(message) {
@@ -130,13 +182,38 @@ app.post('/api/auth/login', async (req, res) => {
   });
 });
 
+app.get('/api/auth/me', requireAuthenticatedUser, (req, res) => {
+  res.json({
+    user: {
+      id: req.user.sub,
+      username: req.user.username,
+      role: req.user.role,
+      seat: req.user.seat || null
+    }
+  });
+});
+
 app.get('/api/chat', async (req, res) => {
   const seat = normalizeSeat(req.query.seat);
   const messages = await listChatMessages(seat);
   res.json({ seat, messages });
 });
 
-app.get('/api/chat/threads', async (req, res) => {
+app.get('/api/menu', async (req, res) => {
+  const filters = {};
+  if (req.query.category) filters.category = String(req.query.category).trim().toLowerCase();
+
+  const items = await listMenuItems(filters);
+  res.json({ items });
+});
+
+app.get('/api/crew/chat', requireCrewUser, async (req, res) => {
+  const seat = normalizeSeat(req.query.seat);
+  const messages = await listChatMessages(seat);
+  res.json({ seat, messages });
+});
+
+app.get('/api/chat/threads', requireCrewUser, async (req, res) => {
   const threads = await listChatThreads();
   res.json({ threads });
 });
@@ -150,6 +227,12 @@ app.post('/api/chat', async (req, res) => {
 
   if (!['passenger', 'crew'].includes(from)) {
     return res.status(400).json({ error: '"from" must be "passenger" or "crew"' });
+  }
+
+  if (from === 'crew') {
+    const user = getRequestUser(req);
+    if (!user) return res.status(401).json({ error: 'Crew authentication required' });
+    if (user.role !== 'crew') return res.status(403).json({ error: 'Crew access required' });
   }
 
   const message = await createChatMessage({
@@ -166,11 +249,17 @@ app.get('/api/requests', async (req, res) => {
   const filters = {};
   if (req.query.seat) filters.seat = normalizeSeat(req.query.seat);
 
+  if (!filters.seat) {
+    const user = getRequestUser(req);
+    if (!user) return res.status(401).json({ error: 'Crew authentication required' });
+    if (user.role !== 'crew') return res.status(403).json({ error: 'Crew access required' });
+  }
+
   const requests = await listRequests(filters);
   res.json({ requests });
 });
 
-app.get('/api/requests/:id', async (req, res) => {
+app.get('/api/requests/:id', requireCrewUser, async (req, res) => {
   const request = await getRequestById(Number(req.params.id));
   if (!request) return res.status(404).json({ error: 'Request not found' });
   res.json({ request });
@@ -200,6 +289,7 @@ app.put('/api/requests/:id', async (req, res) => {
   res.status(existing ? 200 : 201).json({ success: true, request });
 });
 
+
 app.patch('/api/requests/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) {
@@ -211,9 +301,25 @@ app.patch('/api/requests/:id', async (req, res) => {
     if (req.body && Object.prototype.hasOwnProperty.call(req.body, key)) patch[key] = req.body[key];
   });
 
-  const request = await updateRequest(id, patch);
-  if (!request) return res.status(404).json({ error: 'Request not found' });
+  const existing = await getRequestById(id);
+  if (!existing) return res.status(404).json({ error: 'Request not found' });
 
+  const user = getRequestUser(req);
+  const isCrew = Boolean(user && user.role === 'crew');
+  const allowPassengerCancel = !isCrew && isPassengerSelfCancelPatch(existing, patch);
+
+  if (!isCrew && !allowPassengerCancel) {
+    if (!user) return res.status(401).json({ error: 'Crew authentication required' });
+    return res.status(403).json({ error: 'Crew access required' });
+  }
+
+  if (allowPassengerCancel) {
+    patch.seat = existing.seat;
+    patch.status = 'cancelled';
+    patch.eta = 0;
+  }
+
+  const request = await updateRequest(id, patch);
   emitRequestUpdated(request);
   res.json({ success: true, request });
 });
@@ -225,11 +331,35 @@ app.get('/api/hello', (req, res) => {
   });
 });
 
+io.use((socket, next) => {
+  const auth = socket.handshake.auth || {};
+  const query = socket.handshake.query || {};
+  const claimedRole = String(auth.role || query.role || '').trim().toLowerCase();
+  const token = String(auth.token || query.token || '').trim();
+
+  if (token) {
+    const user = verifyToken(token);
+    if (!user) return next(new Error('Invalid authentication token'));
+    socket.data.user = user;
+    if (claimedRole === 'crew' && user.role !== 'crew') {
+      return next(new Error('Crew access required'));
+    }
+    return next();
+  }
+
+  if (claimedRole === 'crew') {
+    return next(new Error('Crew authentication required'));
+  }
+
+  return next();
+});
+
 io.on('connection', socket => {
   const auth = socket.handshake.auth || {};
   const query = socket.handshake.query || {};
-  const role = String(auth.role || query.role || '').trim().toLowerCase();
-  const seat = auth.seat || query.seat;
+  const user = socket.data.user || null;
+  const role = String((user && user.role) || auth.role || query.role || '').trim().toLowerCase();
+  const seat = (user && user.seat) || auth.seat || query.seat;
 
   if (role === 'crew') socket.join('crew');
   if (seat) socket.join(`seat:${normalizeSeat(seat)}`);
@@ -239,7 +369,9 @@ io.on('connection', socket => {
   });
 
   socket.on('crew:join', () => {
-    socket.join('crew');
+    if (socket.data.user && socket.data.user.role === 'crew') {
+      socket.join('crew');
+    }
   });
 });
 
