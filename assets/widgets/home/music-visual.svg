@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5F9AB4"/>
+      <stop offset="100%" stop-color="#184662"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E8D7B2" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#C3A56A" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" rx="24" fill="url(#bg)"/>
+  <circle cx="77" cy="72" r="42" fill="#F4EFE3" fill-opacity="0.18"/>
+  <circle cx="254" cy="62" r="34" fill="#F4EFE3" fill-opacity="0.12"/>
+  <circle cx="238" cy="155" r="56" fill="#F4EFE3" fill-opacity="0.08"/>
+  <path d="M38 146 C66 114, 98 178, 126 146 S186 114, 214 146 S274 178, 302 146" fill="none" stroke="url(#wave)" stroke-width="10" stroke-linecap="round"/>
+  <rect x="70" y="56" width="15" height="108" rx="7.5" fill="#F4EFE3" fill-opacity="0.88"/>
+  <circle cx="77.5" cy="170" r="23" fill="#F4EFE3" fill-opacity="0.92"/>
+  <rect x="184" y="46" width="15" height="92" rx="7.5" fill="#F4EFE3" fill-opacity="0.78"/>
+  <circle cx="191.5" cy="145" r="20" fill="#F4EFE3" fill-opacity="0.84"/>
+</svg>
