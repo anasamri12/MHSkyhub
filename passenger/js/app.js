@@ -116,7 +116,19 @@ function interpolateRoutePosition(progress) {
 }
 
 function formatCoordinate(value, positiveLabel, negativeLabel) {
-  return Math.abs(value).toFixed(1) + '°' + (value >= 0 ? positiveLabel : negativeLabel);
+  return Math.abs(value).toFixed(1) + '\u00B0' + (value >= 0 ? positiveLabel : negativeLabel);
+}
+
+function projectToGlobe(lat, lon) {
+  const centerLon = 58;
+  const lonDelta = (lon - centerLon) * (Math.PI / 180);
+  const latRad = lat * (Math.PI / 180);
+  const x = 50 + Math.sin(lonDelta) * 27;
+  const y = 51 - Math.sin(latRad) * 18 - Math.cos(lonDelta) * 3;
+  return {
+    x: Math.min(81, Math.max(19, x)),
+    y: Math.min(66, Math.max(24, y))
+  };
 }
 
 function updateFlightMap() {
@@ -126,8 +138,12 @@ function updateFlightMap() {
   const flownSeconds = flightTotalSeconds - flightEtaSeconds;
   const flownHours = Math.floor(flownSeconds / 3600);
   const flownMins = Math.floor((flownSeconds % 3600) / 60);
-  const planeLeft = (progress * 100).toFixed(1) + '%';
+  const globePosition = projectToGlobe(routePosition.lat, routePosition.lon);
+  const planeX = globePosition.x.toFixed(1) + '%';
+  const planeY = globePosition.y.toFixed(1) + '%';
+  const globeTilt = (-12 + (progress * 8)).toFixed(1) + 'deg';
 
+  const flightMap = document.getElementById('flight-map');
   const plane = document.getElementById('plane-on-map');
   const planeLabel = document.getElementById('plane-label');
   const arcProgress = document.getElementById('arc-progress');
@@ -136,18 +152,39 @@ function updateFlightMap() {
   const mapCoords = document.getElementById('map-current-coords');
   const mapProgressText = document.getElementById('map-progress-text');
   const mapProgressSub = document.getElementById('map-progress-sub');
+  const focusProgressBar = document.getElementById('focus-progress-bar');
 
-  if (plane) plane.style.left = planeLeft;
-  if (planeLabel) {
-    planeLabel.style.left = planeLeft;
-    planeLabel.textContent = 'Over ' + routePosition.label;
+  if (flightMap) {
+    flightMap.style.setProperty('--plane-x', planeX);
+    flightMap.style.setProperty('--plane-y', planeY);
+    flightMap.style.setProperty('--flight-progress', percent + '%');
+    flightMap.style.setProperty('--globe-tilt', globeTilt);
   }
-  if (arcProgress) arcProgress.style.width = planeLeft;
+  if (plane) plane.setAttribute('aria-label', 'Aircraft over ' + routePosition.label);
+  if (planeLabel) planeLabel.textContent = 'Over ' + routePosition.label;
+  if (arcProgress) arcProgress.style.width = Math.max(22, progress * 232).toFixed(1) + 'px';
   if (mapProgressPill) mapProgressPill.textContent = percent + '% Complete';
   if (mapLocation) mapLocation.textContent = routePosition.label;
   if (mapCoords) mapCoords.textContent = formatCoordinate(routePosition.lat, 'N', 'S') + ', ' + formatCoordinate(routePosition.lon, 'E', 'W');
   if (mapProgressText) mapProgressText.textContent = percent + '%';
-  if (mapProgressSub) mapProgressSub.textContent = flownHours + 'h ' + String(flownMins).padStart(2,'0') + 'm flown · ' + document.getElementById('fi-eta').textContent + ' remaining';
+  if (focusProgressBar) focusProgressBar.style.width = percent + '%';
+  if (mapProgressSub) mapProgressSub.textContent = flownHours + 'h ' + String(flownMins).padStart(2,'0') + 'm flown \u00B7 ' + document.getElementById('fi-eta').textContent + ' remaining';
+}
+
+function submitEnrichLogin() {
+  const email = document.getElementById('enrich-email');
+  const password = document.getElementById('enrich-password');
+  if (!email || !password) return;
+  if (!email.value.trim() || !password.value.trim()) {
+    showToast('Enter your Enrich ID and password', 'info');
+    return;
+  }
+  showToast('Enrich login successful', 'success');
+  navigateTo('home');
+}
+
+function startEnrichSignup() {
+  showToast('Opening Enrich sign up', 'info');
 }
 
 // ============================================================
@@ -188,9 +225,9 @@ function changeQty(delta) {
   document.getElementById('qty-val').textContent = orderQty;
 }
 function showOrderConfirmModal() {
-  document.getElementById('modal-icon').textContent = '☕';
+  document.getElementById('modal-icon').textContent = '\u2615';
   document.getElementById('modal-title').textContent = 'Confirm Your Order';
-  document.getElementById('modal-body').textContent = 'Teh Tarik × ' + orderQty + '\nYour order will be sent to cabin crew immediately.';
+  document.getElementById('modal-body').textContent = 'Teh Tarik \u00D7 ' + orderQty + '\nYour order will be sent to cabin crew immediately.';
   document.getElementById('modal-overlay').classList.add('show');
 }
 function closeModal() {
@@ -209,7 +246,7 @@ function placeOrder() {
     status: 'new',
     timestamp: Date.now(),
     eta: 360,
-    icon: '☕'
+    icon: '\u2615'
   };
   saveRequest(req);
   activeRequest = req;
@@ -217,7 +254,7 @@ function placeOrder() {
   startEtaCountdown();
   showActiveBanner();
   document.getElementById('order-badge').classList.add('show');
-  showToast('✓ Order placed! Tracking your Teh Tarik.', 'success');
+  showToast('\u2713 Order placed! Tracking your Teh Tarik.', 'success');
   navigateTo('track');
 }
 
@@ -266,7 +303,7 @@ function sendAssistRequest() {
   startEtaCountdown();
   showActiveBanner();
   document.getElementById('order-badge').classList.add('show');
-  showToast('✓ Assistance requested: ' + assistSelected, 'success');
+  showToast('\u2713 Assistance requested: ' + assistSelected, 'success');
   navigateTo('track');
   // Reset
   document.querySelectorAll('.assist-card').forEach(c => c.classList.remove('selected'));
@@ -349,7 +386,7 @@ function setMiniRating(cat, n) {
   stars.forEach((s,i) => s.classList.toggle('active', i < n));
 }
 function submitFeedback() {
-  showToast('✓ Thank you for your feedback!', 'success');
+  showToast('\u2713 Thank you for your feedback!', 'success');
 }
 
 // ============================================================
@@ -378,7 +415,7 @@ function refreshBluetoothWidget() {
   if (deviceMeta) {
     deviceMeta.textContent = bluetoothState.enabled
       ? (bluetoothState.connectedDevice
-        ? 'Connected for seat 14A entertainment · ' + bluetoothState.battery + '% battery remaining'
+        ? 'Connected for seat 14A entertainment \u00B7 ' + bluetoothState.battery + '% battery remaining'
         : 'Bluetooth is on and ready to pair with your headphones.')
       : 'Turn Bluetooth back on to reconnect your personal audio device.';
   }
@@ -407,7 +444,7 @@ function refreshBluetoothWidget() {
     const status = document.getElementById('bt-status-' + device.id);
     const connected = bluetoothState.enabled && bluetoothState.connectedDevice === device.name;
     if (card) card.classList.toggle('connected', connected);
-    if (status) status.textContent = connected ? 'Connected · ' + device.battery + '% battery' : 'Tap to connect';
+    if (status) status.textContent = connected ? 'Connected \u00B7 ' + device.battery + '% battery' : 'Tap to connect';
   });
 }
 
@@ -482,7 +519,7 @@ function setSeatPreset(el) {
   el.classList.add('active');
 }
 function savePreferences() {
-  showToast('✓ Preferences saved', 'success');
+  showToast('\u2713 Preferences saved', 'success');
 }
 
 // ============================================================
@@ -532,8 +569,8 @@ function refreshTrackScreen() {
   document.getElementById('track-empty').style.display = 'none';
   document.getElementById('track-active').style.display = 'block';
 
-  document.getElementById('track-icon').textContent = activeRequest.icon || '☕';
-  document.getElementById('track-name').textContent = activeRequest.item + (activeRequest.qty > 1 ? ' × ' + activeRequest.qty : '');
+  document.getElementById('track-icon').textContent = activeRequest.icon || '\u2615';
+  document.getElementById('track-name').textContent = activeRequest.item + (activeRequest.qty > 1 ? ' \u00D7 ' + activeRequest.qty : '');
 
   const ago = Math.floor((Date.now() - activeRequest.timestamp) / 60000);
   document.getElementById('track-time').textContent = ago < 1 ? 'just now' : ago + ' min ago';
@@ -561,14 +598,14 @@ function updateProgressSteps(status) {
     label.classList.remove('done','active');
     if (i < currentStep) {
       dot.classList.add('done');
-      dot.textContent = '✓';
+      dot.textContent = '\u2713';
       label.classList.add('done');
     } else if (i === currentStep) {
       dot.classList.add('active');
-      dot.textContent = '●';
+      dot.textContent = '\u25CF';
       label.classList.add('active');
     } else {
-      dot.textContent = '●';
+      dot.textContent = '\u25CF';
     }
     if (i < 4) {
       const line = document.getElementById('line-' + i);
@@ -615,10 +652,10 @@ function toggleLav(zone) {
   const statusEl = document.getElementById('lav-' + zone + '-status');
   if (!statusEl) return;
   if (lavStates[zone] === 'available') {
-    statusEl.textContent = '● Available';
+    statusEl.textContent = '\u25CF Available';
     statusEl.className = 'lav-status available';
   } else {
-    statusEl.textContent = '● Occupied';
+    statusEl.textContent = '\u25CF Occupied';
     statusEl.className = 'lav-status occupied';
   }
 }
@@ -652,7 +689,7 @@ function syncFromLocalStorage() {
   if (prevStatus !== updated.status) {
     const statusLabels = { preparing:'Crew is preparing your order', ontheway:'Your order is on the way!', delivered:'Your order has been delivered!' };
     if (statusLabels[updated.status]) {
-      showToast('✓ ' + statusLabels[updated.status], 'success');
+      showToast('\u2713 ' + statusLabels[updated.status], 'success');
     }
     if (updated.status === 'delivered') {
       activeRequest = null;
@@ -672,7 +709,7 @@ function addHistory(req) {
   histEl.style.display = 'block';
   const div = document.createElement('div');
   div.className = 'history-item';
-  div.innerHTML = '<div class="history-icon">' + (req.icon||'📦') + '</div><div><div class="history-name">' + req.item + '</div><div class="history-meta">Delivered · Seat 14A</div></div><div class="history-done">✓</div>';
+  div.innerHTML = '<div class="history-icon">' + (req.icon||'[PKG]') + '</div><div><div class="history-name">' + req.item + '</div><div class="history-meta">Delivered \u00B7 Seat 14A</div></div><div class="history-done">\u2713</div>';
   histEl.appendChild(div);
 }
 

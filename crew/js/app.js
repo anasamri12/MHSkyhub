@@ -3,7 +3,7 @@
 // ============================================================
 const DEFAULT_REQUESTS = [
   { id: 9001, seat: '22C', type: 'assist', item: 'Blanket', qty: 1, note: 'Extra soft if available', status: 'inprogress', timestamp: Date.now() - 3*60000, eta: 120, icon: '🛏', priority: 'normal' },
-  { id: 9002, seat: '08B', type: 'order', item: 'Water', qty: 2, note: '', status: 'new', timestamp: Date.now() - 1*60000, eta: 180, icon: '💧', priority: 'normal' },
+  { id: 9002, seat: '08A', type: 'order', item: 'Teh Tarik', qty: 1, note: '', status: 'new', timestamp: Date.now() - 1*60000, eta: 180, icon: '💧', priority: 'normal' },
   { id: 9003, seat: '31F', type: 'assist', item: 'Cleaning', qty: 1, note: 'Spill at seat', status: 'inprogress', timestamp: Date.now() - 5*60000, eta: 60, icon: '🧹', priority: 'urgent' },
   { id: 9004, seat: '05A', type: 'assist', item: 'Headset', qty: 1, note: '', status: 'completed', timestamp: Date.now() - 8*60000, eta: 0, icon: '🎧', priority: 'done' },
 ];

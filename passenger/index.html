@@ -64,9 +64,18 @@
 
     <!-- HOME SCREEN -->
     <div class="screen active" id="screen-home">
-      <div class="home-welcome">
-        <h2>Welcome aboard,</h2>
-        <div class="passenger-name">Yusuf Al-Rahman</div>
+      <div class="home-header">
+        <div class="home-welcome">
+          <h2>Welcome to MHSkyHub,</h2>
+          <div class="passenger-name">Passenger 14A</div>
+        </div>
+        <button class="enrich-entry" onclick="navigateTo('enrich')">
+          <div class="enrich-avatar">EA</div>
+          <div class="enrich-copy">
+            <div class="enrich-label">Enrich</div>
+            <div class="enrich-sub">Log in / Sign up</div>
+          </div>
+        </button>
       </div>
 
       <div class="active-request-banner" id="active-banner" onclick="navigateTo('track')">
@@ -831,54 +840,90 @@
     <div class="screen" id="screen-flightinfo">
       <div class="screen-title">Flight Information</div>
 
-      <div class="flight-map">
+      <div class="flight-map flight-map-3d" id="flight-map">
         <div class="map-grid"></div>
+        <div class="map-glow map-glow-a"></div>
+        <div class="map-glow map-glow-b"></div>
         <div class="map-topline">
           <div class="map-pill">MH 003 · A350-900</div>
           <div class="map-pill" id="map-progress-pill">54% Complete</div>
         </div>
-        <div class="map-content">
-          <div class="map-city">
-            <div class="map-city-code">KUL</div>
-            <div class="map-city-name">Kuala Lumpur</div>
-            <div class="map-city-dot"></div>
-          </div>
-          <div class="map-arc">
-            <div class="arc-line"></div>
-            <div class="arc-progress" id="arc-progress"></div>
-            <div class="arc-dots">
-              <div class="arc-dot-sm"></div>
-              <div class="arc-dot-sm"></div>
-              <div class="arc-dot-sm"></div>
-              <div class="arc-dot-sm"></div>
-              <div class="arc-dot-sm"></div>
+        <div class="map-hero">
+          <div class="map-globe-panel">
+            <div class="map-panel-label">3D Flight Map</div>
+            <div class="globe-stage">
+              <div class="globe-shadow"></div>
+              <div class="globe-shell" id="globe-shell">
+                <div class="globe-halo"></div>
+                <div class="globe-core"></div>
+                <div class="globe-ring globe-ring-equator"></div>
+                <div class="globe-ring globe-ring-lat"></div>
+                <div class="globe-ring globe-ring-meridian"></div>
+                <div class="globe-ring globe-ring-tilt"></div>
+                <div class="globe-continent continent-asia"></div>
+                <div class="globe-continent continent-india"></div>
+                <div class="globe-continent continent-europe"></div>
+                <div class="globe-terminator"></div>
+                <div class="globe-route"></div>
+                <div class="globe-city city-origin">
+                  <span class="globe-city-dot"></span>
+                  <span class="globe-city-code">KUL</span>
+                </div>
+                <div class="globe-city city-destination">
+                  <span class="globe-city-dot"></span>
+                  <span class="globe-city-code">LHR</span>
+                </div>
+                <div class="arc-progress arc-progress-orbit" id="arc-progress"></div>
+                <div class="plane-on-map" id="plane-on-map">✈</div>
+                <div class="plane-label" id="plane-label">Over Northwest India</div>
+              </div>
             </div>
-            <div class="plane-label" id="plane-label">Over Northwest India</div>
-            <div class="plane-on-map" id="plane-on-map">✈️</div>
+            <div class="map-city-strip">
+              <div class="map-city-card">
+                <div class="map-city-code">KUL</div>
+                <div class="map-city-name">Departed Kuala Lumpur</div>
+              </div>
+              <div class="map-city-sep"></div>
+              <div class="map-city-card align-right">
+                <div class="map-city-code">LHR</div>
+                <div class="map-city-name">Arriving London Heathrow</div>
+              </div>
+            </div>
           </div>
-          <div class="map-city">
-            <div class="map-city-code">LHR</div>
-            <div class="map-city-name">London Heathrow</div>
-            <div class="map-city-dot"></div>
-          </div>
-        </div>
-      </div>
 
-      <div class="map-status-strip">
-        <div class="map-status-card">
-          <div class="map-status-label">Current Location</div>
-          <div class="map-status-value" id="map-current-location">Northwest India</div>
-          <div class="map-status-sub">Aircraft position updates with route progress.</div>
-        </div>
-        <div class="map-status-card">
-          <div class="map-status-label">Coordinates</div>
-          <div class="map-status-value" id="map-current-coords">27.6°N, 75.0°E</div>
-          <div class="map-status-sub">Approximate live location for this prototype.</div>
-        </div>
-        <div class="map-status-card">
-          <div class="map-status-label">Route Progress</div>
-          <div class="map-status-value" id="map-progress-text">54%</div>
-          <div class="map-status-sub" id="map-progress-sub">7h 23m flown · 6h 22m remaining</div>
+          <div class="map-side-panel">
+            <div class="map-panel-label">Live Snapshot</div>
+            <div class="map-side-focus">
+              <div class="focus-kicker">Current Position</div>
+              <div class="focus-location" id="map-current-location">Northwest India</div>
+              <div class="focus-coords" id="map-current-coords">27.6°N, 75.0°E</div>
+              <div class="focus-progress-row">
+                <div class="focus-progress-copy">
+                  <div class="focus-progress-label">Route Progress</div>
+                  <div class="focus-progress-value" id="map-progress-text">54%</div>
+                </div>
+                <div class="focus-progress-meter">
+                  <div class="focus-progress-bar" id="focus-progress-bar"></div>
+                </div>
+              </div>
+              <div class="focus-sub" id="map-progress-sub">7h 23m flown · 6h 22m remaining</div>
+            </div>
+
+            <div class="map-side-metrics">
+              <div class="map-mini-card">
+                <div class="map-mini-label">Crossing</div>
+                <div class="map-mini-value">Asia to Europe</div>
+              </div>
+              <div class="map-mini-card">
+                <div class="map-mini-label">Cruise</div>
+                <div class="map-mini-value">FL350</div>
+              </div>
+              <div class="map-mini-card">
+                <div class="map-mini-label">Ground Speed</div>
+                <div class="map-mini-value">903 km/h</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -931,6 +976,45 @@
           <div class="lav-icon">🚻</div>
           <div class="lav-zone">Rear Cabin</div>
           <div class="lav-status available" id="lav-rear-status">● Available</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENRICH SCREEN -->
+    <div class="screen" id="screen-enrich">
+      <div class="back-btn" onclick="navigateTo('home')">‹ Back to Home</div>
+      <div class="screen-title">Malaysia Airlines Enrich</div>
+      <div class="screen-sub">Sign in to access Enrich benefits, points balance and personalised offers during your journey.</div>
+
+      <div class="enrich-hero-card">
+        <div class="enrich-hero-top">
+          <div class="enrich-hero-avatar">EA</div>
+          <div>
+            <div class="enrich-hero-title">Enrich Member Access</div>
+            <div class="enrich-hero-sub">Unlock member perks onboard and across future Malaysia Airlines journeys.</div>
+          </div>
+        </div>
+        <div class="enrich-pill-row">
+          <div class="enrich-pill">Miles balance</div>
+          <div class="enrich-pill">Exclusive offers</div>
+          <div class="enrich-pill">Faster preferences</div>
+        </div>
+      </div>
+
+      <div class="enrich-auth-grid">
+        <div class="glass-card">
+          <div class="section-title">Log In</div>
+          <div class="enrich-form">
+            <input class="enrich-input" id="enrich-email" type="email" placeholder="Enrich ID or email">
+            <input class="enrich-input" id="enrich-password" type="password" placeholder="Password">
+            <button class="btn btn-gold" style="width:100%;" onclick="submitEnrichLogin()">Log In</button>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="section-title">New To Enrich?</div>
+          <div class="enrich-signup-copy">Create your Enrich account to start earning miles, save travel preferences and receive member-only offers.</div>
+          <button class="btn btn-primary" style="width:100%;margin-top:18px;" onclick="startEnrichSignup()">Sign Up</button>
         </div>
       </div>
     </div>
