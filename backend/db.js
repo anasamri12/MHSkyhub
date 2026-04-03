@@ -160,6 +160,39 @@ function hashPassword(password) {
   return crypto.createHash('sha256').update(String(password)).digest('hex');
 }
 
+function mapUserRow(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    username: row.username,
+    passwordHash: row.password_hash,
+    role: row.role,
+    seat: row.seat || null,
+    displayName: row.display_name || row.username,
+    email: row.email || null,
+    enrichId: row.enrich_id || null,
+    tier: row.tier || null
+  };
+}
+
+async function ensureUserProfileColumns() {
+  const columns = await all('PRAGMA table_info(users)');
+  const existing = new Set(columns.map(column => column.name));
+  const profileColumns = [
+    ['display_name', 'TEXT'],
+    ['email', 'TEXT'],
+    ['enrich_id', 'TEXT'],
+    ['tier', 'TEXT']
+  ];
+
+  for (const [name, type] of profileColumns) {
+    if (!existing.has(name)) {
+      await run(`ALTER TABLE users ADD COLUMN ${name} ${type}`);
+    }
+  }
+}
+
 function mapChatRow(row) {
   return {
     id: row.id,
@@ -199,29 +232,60 @@ function mapRequestRow(row) {
   };
 }
 
-async function seedUsers() {
-  const row = await get('SELECT COUNT(*) AS count FROM users');
-  if (row && row.count > 0) return;
 
+async function seedUsers() {
   const demoUsers = [
     {
       username: process.env.DEMO_CREW_USERNAME || 'crew',
       password: process.env.DEMO_CREW_PASSWORD || 'mhcrew123',
       role: 'crew',
-      seat: null
+      seat: null,
+      displayName: 'Cabin Crew',
+      email: null,
+      enrichId: null,
+      tier: null
     },
     {
       username: process.env.DEMO_PASSENGER_USERNAME || 'passenger14a',
       password: process.env.DEMO_PASSENGER_PASSWORD || 'mhpass123',
       role: 'passenger',
-      seat: DEFAULT_CHAT_SEAT
+      seat: DEFAULT_CHAT_SEAT,
+      displayName: 'Yusuf Al-Rahman',
+      email: 'yusuf.al-rahman@enrich.demo',
+      enrichId: 'MHENRICH14003',
+      tier: 'Enrich Gold'
     }
   ];
 
+  const row = await get('SELECT COUNT(*) AS count FROM users');
+  if (!row || row.count === 0) {
+    for (const user of demoUsers) {
+      await run(
+        'INSERT INTO users (username, password_hash, role, seat, display_name, email, enrich_id, tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          user.username,
+          hashPassword(user.password),
+          user.role,
+          user.seat,
+          user.displayName,
+          user.email,
+          user.enrichId,
+          user.tier
+        ]
+      );
+    }
+    return;
+  }
+
   for (const user of demoUsers) {
     await run(
-      'INSERT INTO users (username, password_hash, role, seat) VALUES (?, ?, ?, ?)',
-      [user.username, hashPassword(user.password), user.role, user.seat]
+      `UPDATE users
+       SET display_name = COALESCE(display_name, ?),
+           email = COALESCE(email, ?),
+           enrich_id = COALESCE(enrich_id, ?),
+           tier = COALESCE(tier, ?)
+       WHERE username = ?`,
+      [user.displayName, user.email, user.enrichId, user.tier, user.username]
     );
   }
 }
@@ -312,15 +376,22 @@ async function repairRequestIcons() {
 async function initDb() {
   ensureDb();
 
-  await run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL,
-      seat TEXT
-    )
-  `);
+
+await run(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    seat TEXT,
+    display_name TEXT,
+    email TEXT,
+    enrich_id TEXT,
+    tier TEXT
+  )
+`);
+
+await ensureUserProfileColumns();
 
   await run(`
     CREATE TABLE IF NOT EXISTS chat_messages (
@@ -362,6 +433,8 @@ async function initDb() {
   `);
 
   await run('CREATE INDEX IF NOT EXISTS idx_chat_messages_seat ON chat_messages(seat, timestamp)');
+  await run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+  await run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_enrich_id ON users(enrich_id)');
   await run('CREATE INDEX IF NOT EXISTS idx_service_requests_seat ON service_requests(seat, timestamp)');
   await run('CREATE INDEX IF NOT EXISTS idx_service_menu_items_category ON service_menu_items(category, sort_order)');
 
@@ -372,8 +445,87 @@ async function initDb() {
   await repairRequestIcons();
 }
 
-async function findUserByUsername(username) {
-  return get('SELECT id, username, password_hash, role, seat FROM users WHERE username = ?', [username]);
+
+async function getUserById(id) {
+  const row = await get(
+    'SELECT id, username, password_hash, role, seat, display_name, email, enrich_id, tier FROM users WHERE id = ?',
+    [id]
+  );
+  return mapUserRow(row);
+}
+
+async function findUserByUsername(identifier) {
+  const loginIdentifier = String(identifier || '').trim();
+  if (!loginIdentifier) return null;
+
+  const row = await get(
+    `SELECT id, username, password_hash, role, seat, display_name, email, enrich_id, tier
+     FROM users
+     WHERE username = ?
+        OR LOWER(email) = LOWER(?)
+        OR UPPER(enrich_id) = UPPER(?)`,
+    [loginIdentifier, loginIdentifier, loginIdentifier]
+  );
+  return mapUserRow(row);
+}
+
+function buildDisplayNameFromEmail(email) {
+  const localPart = String(email || '').split('@')[0] || 'Enrich Member';
+  return localPart
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || 'Enrich Member';
+}
+
+async function generateUniqueUsername(baseValue) {
+  const base = String(baseValue || 'enrich').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 16) || 'enrich';
+  let candidate = base;
+  let suffix = 1;
+
+  while (await get('SELECT id FROM users WHERE username = ?', [candidate])) {
+    candidate = `${base}${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+async function generateUniqueEnrichId() {
+  while (true) {
+    const candidate = `MH${String(Date.now()).slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+    const existing = await get('SELECT id FROM users WHERE enrich_id = ?', [candidate]);
+    if (!existing) return candidate;
+  }
+}
+
+async function createPassengerUser({ displayName, email, password, seat }) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const safeDisplayName = String(displayName || '').trim() || buildDisplayNameFromEmail(normalizedEmail);
+  const safeSeat = normalizeSeat(seat || DEFAULT_CHAT_SEAT);
+
+  if (!normalizedEmail) {
+    const error = new Error('Email is required');
+    error.code = 'EMAIL_REQUIRED';
+    throw error;
+  }
+
+  const existingEmail = await get('SELECT id FROM users WHERE LOWER(email) = LOWER(?)', [normalizedEmail]);
+  if (existingEmail) {
+    const error = new Error('Email already registered');
+    error.code = 'EMAIL_TAKEN';
+    throw error;
+  }
+
+  const username = await generateUniqueUsername(normalizedEmail.split('@')[0]);
+  const enrichId = await generateUniqueEnrichId();
+  const tier = 'Enrich Explorer';
+  const result = await run(
+    'INSERT INTO users (username, password_hash, role, seat, display_name, email, enrich_id, tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [username, hashPassword(password), 'passenger', safeSeat, safeDisplayName, normalizedEmail, enrichId, tier]
+  );
+
+  return getUserById(result.id);
 }
 
 async function listChatMessages(seat) {
@@ -544,6 +696,7 @@ module.exports = {
   hashPassword,
   initDb,
   findUserByUsername,
+  createPassengerUser,
   listChatMessages,
   listChatThreads,
   createChatMessage,

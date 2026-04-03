@@ -53,6 +53,7 @@ let orderQty = 1;
 let selectedAssist = null;
 let selectedAssistLabel = '';
 let activeRequest = null;
+let pendingRequests = [];
 let etaSeconds = 0;
 let etaInterval = null;
 let clockInterval = null;
@@ -65,6 +66,52 @@ let toastTimeout = null;
 let chatPollInterval = null;
 let chatMessages = [];
 let chatInitialized = false;
+
+const ORDER_CATEGORY_ORDER = ['hot_drinks', 'cold_drinks', 'snacks', 'meals', 'comfort_items', 'accessories'];
+const ORDER_CATEGORY_META = {
+  hot_drinks: {
+    label: 'Hot Drinks',
+    icon: '\u2615',
+    notePlaceholder: 'Any special requests? (e.g. extra hot, less sweet)',
+    submitLabel: 'Confirm Order'
+  },
+  cold_drinks: {
+    label: 'Cold Drinks',
+    icon: '\uD83E\uDDC3',
+    notePlaceholder: 'Any serving notes? (e.g. no ice, extra chilled)',
+    submitLabel: 'Confirm Order'
+  },
+  snacks: {
+    label: 'Snacks',
+    icon: '\uD83C\uDF6A',
+    notePlaceholder: 'Any preferences? (e.g. savoury option, sweet option)',
+    submitLabel: 'Confirm Order'
+  },
+  meals: {
+    label: 'Meals',
+    icon: '\uD83C\uDF74',
+    notePlaceholder: 'Any meal notes? (e.g. lighter portion, serve later if possible)',
+    submitLabel: 'Confirm Meal Request'
+  },
+  comfort_items: {
+    label: 'Comfort Items',
+    icon: '\uD83D\uDECF',
+    notePlaceholder: 'Any comfort preferences? (e.g. for sleep, extra support)',
+    submitLabel: 'Send Request'
+  },
+  accessories: {
+    label: 'Accessories',
+    icon: '\uD83C\uDFA7',
+    notePlaceholder: 'Any device or travel note? (e.g. USB-C phone, arrival form)',
+    submitLabel: 'Send Request'
+  }
+};
+let orderCatalog = [];
+let orderCatalogLoading = false;
+let orderCatalogPromise = null;
+let selectedOrderCategory = ORDER_CATEGORY_ORDER[0];
+let selectedOrderItem = null;
+
 let lavStates = { front: 'available', mid: 'occupied', rear: 'available' };
 const bluetoothDevices = [
   { id: 'sony', name: 'Sony WH-1000XM5', battery: 78 },
@@ -86,6 +133,187 @@ const routeWaypoints = [
   { progress: 0.92, label: 'Western Europe', lat: 49.7, lon: 7.8 },
   { progress: 1.00, label: 'London Heathrow', lat: 51.5, lon: -0.5 }
 ];
+
+const WATCH_HERO_LIBRARY = {
+  movies: {
+    'Dune: Part Two': { badge: 'Now Showing', description: 'Paul Atreides unites with Chani and the Fremen while seeking revenge against the forces that destroyed his family.', actionLabel: 'Play Now' },
+    'Mufasa': { badge: 'Continue Watching', description: "A sweeping origin story that follows Mufasa from his early struggles to his rise as one of the Pride Lands' greatest kings.", actionLabel: 'Play Now' },
+    'Interstellar': { badge: 'Continue Watching', description: 'A team of explorers travels beyond our galaxy in search of a future for humanity as Earth becomes increasingly uninhabitable.', actionLabel: 'Resume Film' },
+    'Mission: Impossible': { badge: 'Continue Watching', description: 'Ethan Hunt races across continents to stop a rogue AI threat before it falls into the wrong hands.', actionLabel: 'Play Now' },
+    'Top Gun: Maverick': { badge: 'Continue Watching', description: 'Pete Maverick Mitchell returns to train a new generation of pilots for a mission that demands everything they have.', actionLabel: 'Play Now' },
+    'Barbie': { badge: 'Continue Watching', description: 'Barbie leaves Barbieland for the real world and discovers a playful, heartfelt journey about identity and purpose.', actionLabel: 'Play Now' },
+    'Aquaman 2': { badge: 'New Releases', description: 'Aquaman must forge an uneasy alliance to protect Atlantis and his family from a dangerous new enemy.', actionLabel: 'Play Now' },
+    'Oppenheimer': { badge: 'New Releases', description: "Christopher Nolan's tense historical drama chronicles the life, ambition, and burden of J. Robert Oppenheimer.", actionLabel: 'Play Now' },
+    'Everest': { badge: 'New Releases', description: 'A gripping survival drama based on the 1996 Mount Everest disaster, where courage and endurance are pushed to their limits.', actionLabel: 'Play Now' },
+    'Poor Things': { badge: 'New Releases', description: 'A bold, visually inventive tale of reinvention and self-discovery led by an unforgettable central performance.', actionLabel: 'Play Now' },
+    'Wonka': { badge: 'New Releases', description: "An imaginative musical adventure exploring the early days of Willy Wonka before he opened the world's most famous chocolate factory.", actionLabel: 'Play Now' },
+    'The Creator': { badge: 'New Releases', description: 'A futuristic war thriller in which a soldier must decide the fate of humanity and artificial intelligence.', actionLabel: 'Play Now' }
+  },
+  tv: {
+    'Succession': { badge: 'Popular Series', description: 'A razor-sharp family power struggle inside a global media empire where loyalty shifts as fast as the stock price.', actionLabel: 'Watch Now' },
+    'The Bear': { badge: 'Popular Series', description: 'An intense, heartfelt kitchen drama about rebuilding a family sandwich shop under relentless pressure.', actionLabel: 'Watch Now' },
+    'Planet Earth III': { badge: 'Popular Series', description: 'A stunning wildlife documentary series capturing extraordinary animal behaviour and fragile ecosystems across the planet.', actionLabel: 'Watch Now' },
+    'Ted Lasso': { badge: 'Popular Series', description: 'An optimistic football comedy about kindness, teamwork, and finding belief in unlikely places.', actionLabel: 'Watch Now' },
+    'Only Murders': { badge: 'Popular Series', description: 'Three podcast-obsessed neighbours turn amateur sleuths when mysterious crimes hit their building.', actionLabel: 'Watch Now' },
+    'Shogun': { badge: 'Popular Series', description: 'An epic historical saga of political intrigue, war, and survival in feudal Japan.', actionLabel: 'Watch Now' },
+    'The Boys': { badge: 'Popular Series', description: 'A dark, satirical superhero series where unchecked power and celebrity collide with brutal consequences.', actionLabel: 'Watch Now' },
+    'White Lotus': { badge: 'Popular Series', description: 'A sharp social satire set at luxury resorts, where privilege, secrets, and tension simmer beneath the surface.', actionLabel: 'Watch Now' }
+  }
+};
+
+function normalizeWatchMeta(meta) {
+  return String(meta || '')
+    .replace(/Â·/g, '·')
+    .replace(/\s*\|\s*/g, ' · ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getWatchCards(tab) {
+  const selector = tab === 'movies' ? '#watch-movies .movie-card' : '#watch-tv .show-card';
+  return Array.from(document.querySelectorAll(selector));
+}
+
+function getWatchCardData(card, tab) {
+  const titleSelector = tab === 'movies' ? '.movie-title' : '.show-title';
+  const metaSelector = tab === 'movies' ? '.movie-meta' : '.show-meta';
+  const title = (card.querySelector(titleSelector)?.textContent || '').trim();
+  const meta = normalizeWatchMeta(card.querySelector(metaSelector)?.textContent || '');
+  const poster = card.querySelector('img');
+  const details = (WATCH_HERO_LIBRARY[tab] && WATCH_HERO_LIBRARY[tab][title]) || {};
+
+  return {
+    title,
+    meta,
+    posterSrc: poster ? poster.getAttribute('src') : '',
+    posterAlt: poster ? poster.getAttribute('alt') : `${title} poster`,
+    badge: details.badge || (tab === 'movies' ? 'Featured' : 'Series Spotlight'),
+    description: details.description || 'Enjoy this title during your journey with uninterrupted inflight entertainment.',
+    actionLabel: details.actionLabel || (tab === 'movies' ? 'Play Now' : 'Watch Now')
+  };
+}
+
+function ensureWatchHeroDescription(hero) {
+  const heroInfo = hero.querySelector('.hero-info');
+  if (!heroInfo) return null;
+
+  let desc = heroInfo.querySelector('.hero-desc');
+  if (!desc) {
+    const playBtn = heroInfo.querySelector('.hero-play');
+    const candidate = playBtn ? playBtn.previousElementSibling : null;
+    if (candidate && !candidate.classList.contains('hero-meta') && !candidate.classList.contains('hero-title') && !candidate.classList.contains('hero-badge')) {
+      desc = candidate;
+      desc.classList.add('hero-desc');
+    } else {
+      desc = document.createElement('div');
+      desc.className = 'hero-desc';
+      if (playBtn) heroInfo.insertBefore(desc, playBtn);
+      else heroInfo.appendChild(desc);
+    }
+  }
+
+  return desc;
+}
+
+function createWatchHero(tab) {
+  const hero = document.createElement('div');
+  hero.className = 'hero-card';
+  hero.setAttribute('data-watch-hero', tab);
+  hero.innerHTML = `
+    <div class="hero-poster"></div>
+    <div class="hero-info">
+      <div class="hero-badge"></div>
+      <div class="hero-title"></div>
+      <div class="hero-meta"></div>
+      <div class="hero-desc"></div>
+      <button class="hero-play" type="button"></button>
+    </div>
+  `;
+  return hero;
+}
+
+function getWatchHero(tab) {
+  const tabEl = document.getElementById(`watch-${tab}`);
+  if (!tabEl) return null;
+
+  let hero = Array.from(tabEl.children).find(child => child.classList && child.classList.contains('hero-card'));
+  if (!hero) {
+    hero = createWatchHero(tab);
+    tabEl.insertBefore(hero, tabEl.firstChild);
+  }
+
+  hero.setAttribute('data-watch-hero', tab);
+  ensureWatchHeroDescription(hero);
+  return hero;
+}
+
+function renderWatchHero(tab, card) {
+  const hero = getWatchHero(tab);
+  const data = getWatchCardData(card, tab);
+  if (!hero || !data.title) return;
+
+  const posterWrap = hero.querySelector('.hero-poster');
+  const badge = hero.querySelector('.hero-badge');
+  const title = hero.querySelector('.hero-title');
+  const meta = hero.querySelector('.hero-meta');
+  const desc = ensureWatchHeroDescription(hero);
+  const playBtn = hero.querySelector('.hero-play');
+
+  if (posterWrap) {
+    posterWrap.innerHTML = '';
+    if (data.posterSrc) {
+      const image = document.createElement('img');
+      image.src = data.posterSrc;
+      image.alt = data.posterAlt;
+      posterWrap.appendChild(image);
+    }
+  }
+
+  if (badge) badge.textContent = data.badge.toUpperCase();
+  if (title) title.textContent = data.title;
+  if (meta) meta.textContent = data.meta;
+  if (desc) desc.textContent = data.description;
+  if (playBtn) {
+    playBtn.innerHTML = '&#9654;&nbsp; ' + data.actionLabel;
+    playBtn.onclick = () => showToast((tab === 'movies' ? 'Playing ' : 'Opening ') + data.title, 'info');
+  }
+}
+
+function activateWatchCard(tab, card) {
+  getWatchCards(tab).forEach(item => item.classList.toggle('is-active', item === card));
+  renderWatchHero(tab, card);
+
+  const watchScreen = document.getElementById('screen-watch');
+  if (watchScreen && watchScreen.scrollTop > 80) {
+    watchScreen.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function bindWatchCards(tab) {
+  getWatchCards(tab).forEach(card => {
+    if (card.dataset.watchBound === 'true') return;
+
+    card.dataset.watchBound = 'true';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.addEventListener('click', () => activateWatchCard(tab, card));
+    card.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        activateWatchCard(tab, card);
+      }
+    });
+  });
+}
+
+function initWatchHeroInteractions() {
+  ['movies', 'tv'].forEach(tab => {
+    bindWatchCards(tab);
+    const cards = getWatchCards(tab);
+    if (!cards.length) return;
+    activateWatchCard(tab, cards[0]);
+  });
+}
 
 // ============================================================
 // NAVIGATION
@@ -168,6 +396,21 @@ function interpolateRoutePosition(progress) {
   return { label: last.label, lat: last.lat, lon: last.lon };
 }
 
+function getNextRouteWaypoint(progress) {
+  const clamped = Math.min(1, Math.max(0, progress));
+  const next = routeWaypoints.find(point => point.progress > clamped + 0.001);
+  return next || routeWaypoints[routeWaypoints.length - 1];
+}
+
+function projectRoutePositionToGlobe(lat, lon) {
+  const x = ((lon + 180) / 360) * 100;
+  const y = ((90 - lat) / 180) * 100;
+  return {
+    x: Math.min(86, Math.max(14, x)),
+    y: Math.min(78, Math.max(22, y))
+  };
+}
+
 function formatCoordinate(value, positiveLabel, negativeLabel) {
   return Math.abs(value).toFixed(1) + '\u00B0' + (value >= 0 ? positiveLabel : negativeLabel);
 }
@@ -175,11 +418,14 @@ function formatCoordinate(value, positiveLabel, negativeLabel) {
 function updateFlightMap() {
   const progress = Math.min(0.98, Math.max(0.04, (flightTotalSeconds - flightEtaSeconds) / flightTotalSeconds));
   const routePosition = interpolateRoutePosition(progress);
+  const nextWaypoint = getNextRouteWaypoint(progress);
+  const globePosition = projectRoutePositionToGlobe(routePosition.lat, routePosition.lon);
   const percent = Math.round(progress * 100);
   const flownSeconds = flightTotalSeconds - flightEtaSeconds;
   const flownHours = Math.floor(flownSeconds / 3600);
   const flownMins = Math.floor((flownSeconds % 3600) / 60);
   const planeLeft = (progress * 100).toFixed(1) + '%';
+  const coordinateLabel = formatCoordinate(routePosition.lat, 'N', 'S') + ', ' + formatCoordinate(routePosition.lon, 'E', 'W');
 
   const plane = document.getElementById('plane-on-map');
   const planeLabel = document.getElementById('plane-label');
@@ -189,6 +435,13 @@ function updateFlightMap() {
   const mapCoords = document.getElementById('map-current-coords');
   const mapProgressText = document.getElementById('map-progress-text');
   const mapProgressSub = document.getElementById('map-progress-sub');
+  const globeProgressPill = document.getElementById('globe-progress-pill');
+  const globeCurrentLocation = document.getElementById('globe-current-location');
+  const globeCurrentCoords = document.getElementById('globe-current-coords');
+  const globeNextWaypoint = document.getElementById('globe-next-waypoint');
+  const globeProgressCopy = document.getElementById('globe-progress-copy');
+  const globePlane = document.getElementById('globe-plane');
+  const globeMarker = document.getElementById('globe-marker');
 
   if (plane) plane.style.left = planeLeft;
   if (planeLabel) {
@@ -198,9 +451,22 @@ function updateFlightMap() {
   if (arcProgress) arcProgress.style.width = planeLeft;
   if (mapProgressPill) mapProgressPill.textContent = percent + '% Complete';
   if (mapLocation) mapLocation.textContent = routePosition.label;
-  if (mapCoords) mapCoords.textContent = formatCoordinate(routePosition.lat, 'N', 'S') + ', ' + formatCoordinate(routePosition.lon, 'E', 'W');
+  if (mapCoords) mapCoords.textContent = coordinateLabel;
   if (mapProgressText) mapProgressText.textContent = percent + '%';
-  if (mapProgressSub) mapProgressSub.textContent = flownHours + 'h ' + String(flownMins).padStart(2,'0') + 'm flown - ' + document.getElementById('fi-eta').textContent + ' remaining';
+  if (mapProgressSub) mapProgressSub.textContent = flownHours + 'h ' + String(flownMins).padStart(2,'0') + 'm flown · ' + document.getElementById('fi-eta').textContent + ' remaining';
+  if (globeProgressPill) globeProgressPill.textContent = percent + '% Along Route';
+  if (globeCurrentLocation) globeCurrentLocation.textContent = routePosition.label;
+  if (globeCurrentCoords) globeCurrentCoords.textContent = coordinateLabel;
+  if (globeNextWaypoint) globeNextWaypoint.textContent = nextWaypoint.label;
+  if (globeProgressCopy) globeProgressCopy.textContent = percent + '% complete · ' + nextWaypoint.label + ' is the next route segment.';
+  if (globePlane) {
+    globePlane.style.left = globePosition.x + '%';
+    globePlane.style.top = globePosition.y + '%';
+  }
+  if (globeMarker) {
+    globeMarker.style.left = globePosition.x + '%';
+    globeMarker.style.top = globePosition.y + '%';
+  }
 }
 
 // ============================================================
@@ -218,68 +484,239 @@ function setWatchTab(tab) {
   if (idx >= 0 && buttons[idx]) buttons[idx].classList.add('active');
 }
 
+
 // ============================================================
 // ORDER FLOW
 // ============================================================
-function showOrderCategories() {
+function normalizeOrderMenuItem(item) {
+  const category = String(item?.category || '').trim().toLowerCase();
+  const meta = ORDER_CATEGORY_META[category] || { icon: '\u2615' };
+
+  return {
+    slug: String(item?.slug || `${category || 'item'}-${Date.now()}`),
+    category,
+    name: String(item?.name || 'Service Item'),
+    description: String(item?.description || 'Available on request from cabin crew.'),
+    priceLabel: String(item?.priceLabel || item?.price_label || 'Included'),
+    icon: String(item?.icon || meta.icon || '\u2615'),
+    sortOrder: Number(item?.sortOrder || item?.sort_order || 0)
+  };
+}
+
+function getOrderItemsByCategory(categoryKey) {
+  return orderCatalog.filter(item => item.category === categoryKey);
+}
+
+function formatOrderCount(count) {
+  return `${count} item${count === 1 ? '' : 's'}`;
+}
+
+async function ensureOrderCatalogLoaded() {
+  if (orderCatalog.length) return orderCatalog;
+  if (orderCatalogPromise) return orderCatalogPromise;
+
+  orderCatalogLoading = true;
+  orderCatalogPromise = fetch(`${API_BASE}/menu`, { cache: 'no-store' })
+    .then(async res => {
+      if (!res.ok) throw new Error(`Order menu request failed: ${res.status}`);
+      const payload = await res.json();
+      orderCatalog = (payload.items || []).map(normalizeOrderMenuItem);
+      return orderCatalog;
+    })
+    .catch(error => {
+      console.error('Could not load onboard menu:', error);
+      showToast('Order menu is unavailable right now', 'info');
+      orderCatalog = [];
+      return orderCatalog;
+    })
+    .finally(() => {
+      orderCatalogLoading = false;
+      orderCatalogPromise = null;
+    });
+
+  return orderCatalogPromise;
+}
+
+function renderOrderPlaceholder(target, title, message) {
+  const container = typeof target === 'string' ? document.getElementById(target) : target;
+  if (!container) return;
+
+  container.innerHTML = `<div class="order-placeholder"><strong>${title}</strong>${message}</div>`;
+}
+
+function renderOrderCategories() {
+  const grid = document.getElementById('order-category-grid');
+  if (!grid) return;
+
+  grid.innerHTML = ORDER_CATEGORY_ORDER.map(categoryKey => {
+    const meta = ORDER_CATEGORY_META[categoryKey];
+    const count = getOrderItemsByCategory(categoryKey).length;
+    const activeClass = categoryKey === selectedOrderCategory ? ' is-active' : '';
+    return `
+      <div class="cat-card${activeClass}" onclick="showOrderItems('${categoryKey}')">
+        <div class="cat-icon">${meta.icon}</div>
+        <div class="cat-name">${meta.label}</div>
+        <div class="cat-count">${formatOrderCount(count)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderOrderItems(categoryKey = selectedOrderCategory) {
+  const meta = ORDER_CATEGORY_META[categoryKey] || { label: 'Order Onboard' };
+  const titleEl = document.getElementById('order-items-title');
+  const listEl = document.getElementById('order-items-list');
+  if (titleEl) titleEl.textContent = meta.label;
+  if (!listEl) return;
+
+  const items = getOrderItemsByCategory(categoryKey);
+  if (!items.length) {
+    selectedOrderItem = null;
+    renderOrderPlaceholder(listEl, meta.label, 'No items are available in this category right now.');
+    return;
+  }
+
+  if (!selectedOrderItem || selectedOrderItem.category !== categoryKey || !items.some(item => item.slug === selectedOrderItem.slug)) {
+    selectedOrderItem = items[0];
+  }
+
+  listEl.innerHTML = items.map(item => `
+    <div class="item-row" onclick="showOrderDetail('${item.slug}')">
+      <div class="item-emoji-box">${item.icon}</div>
+      <div class="item-info">
+        <div class="item-name">${item.name}</div>
+        <div class="item-desc">${item.description}</div>
+      </div>
+      <div class="item-price">${item.priceLabel}</div>
+      <div class="item-chevron">&#8250;</div>
+    </div>
+  `).join('');
+}
+
+function renderOrderDetail(item = selectedOrderItem) {
+  if (!item) return;
+
+  const meta = ORDER_CATEGORY_META[item.category] || ORDER_CATEGORY_META.hot_drinks;
+  const iconEl = document.getElementById('order-detail-icon');
+  const nameEl = document.getElementById('order-detail-name');
+  const priceEl = document.getElementById('order-detail-price');
+  const descEl = document.getElementById('order-detail-desc');
+  const noteEl = document.getElementById('order-note');
+  const confirmBtn = document.getElementById('order-confirm-btn');
+
+  if (iconEl) iconEl.textContent = item.icon || meta.icon;
+  if (nameEl) nameEl.textContent = item.name;
+  if (priceEl) priceEl.textContent = item.priceLabel;
+  if (descEl) descEl.textContent = item.description;
+  if (noteEl) noteEl.placeholder = meta.notePlaceholder;
+  if (confirmBtn) confirmBtn.textContent = meta.submitLabel;
+}
+
+function getOrderEta(item) {
+  if (!item) return 300;
+  if (item.category === 'meals') return 600;
+  if (item.category === 'snacks') return 300;
+  if (item.category === 'comfort_items' || item.category === 'accessories') return 240;
+  return 300;
+}
+
+async function showOrderCategories(categoryKey) {
+  if (categoryKey) selectedOrderCategory = categoryKey;
+  await ensureOrderCatalogLoaded();
+  renderOrderCategories();
   document.querySelectorAll('.order-state').forEach(s => s.classList.remove('active'));
   document.getElementById('order-categories').classList.add('active');
 }
-function showOrderItems() {
+
+async function showOrderItems(categoryKey) {
+  if (categoryKey) selectedOrderCategory = categoryKey;
+  await ensureOrderCatalogLoaded();
+  renderOrderCategories();
+  renderOrderItems(selectedOrderCategory);
   document.querySelectorAll('.order-state').forEach(s => s.classList.remove('active'));
   document.getElementById('order-items').classList.add('active');
 }
-function showOrderDetail() {
-  document.querySelectorAll('.order-state').forEach(s => s.classList.remove('active'));
-  document.getElementById('order-detail').classList.add('active');
+
+async function showOrderDetail(slug) {
+  await ensureOrderCatalogLoaded();
+
+  if (slug) {
+    selectedOrderItem = orderCatalog.find(item => item.slug === slug) || null;
+    if (selectedOrderItem) selectedOrderCategory = selectedOrderItem.category;
+  }
+
+  if (!selectedOrderItem) {
+    const items = getOrderItemsByCategory(selectedOrderCategory);
+    selectedOrderItem = items[0] || null;
+  }
+
+  if (!selectedOrderItem) {
+    showOrderItems(selectedOrderCategory);
+    return;
+  }
+
   orderQty = 1;
   document.getElementById('qty-val').textContent = '1';
   document.getElementById('order-note').value = '';
+  renderOrderDetail(selectedOrderItem);
+  document.querySelectorAll('.order-state').forEach(s => s.classList.remove('active'));
+  document.getElementById('order-detail').classList.add('active');
 }
+
 function changeQty(delta) {
   orderQty = Math.max(1, Math.min(5, orderQty + delta));
   document.getElementById('qty-val').textContent = orderQty;
 }
+
 function showOrderConfirmModal() {
-  document.getElementById('modal-icon').textContent = '\u2615';
-  document.getElementById('modal-title').textContent = 'Confirm Your Order';
-  document.getElementById('modal-body').textContent = 'Teh Tarik \u00D7 ' + orderQty + '\nYour order will be sent to cabin crew immediately.';
+  if (!selectedOrderItem) {
+    showToast('Please choose an item first', 'info');
+    return;
+  }
+
+  const note = document.getElementById('order-note').value.trim();
+  const isRequestCategory = ['comfort_items', 'accessories'].includes(selectedOrderItem.category);
+  document.getElementById('modal-icon').textContent = selectedOrderItem.icon || '\u2615';
+  document.getElementById('modal-title').textContent = isRequestCategory ? 'Confirm Your Request' : 'Confirm Your Order';
+  document.getElementById('modal-body').textContent = [
+    `${selectedOrderItem.name} ? ${orderQty}`,
+    note ? `Note: ${note}` : '',
+    'Your request will be sent to cabin crew immediately.'
+  ].filter(Boolean).join('\n');
   document.getElementById('modal-overlay').classList.add('show');
 }
+
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('show');
 }
+
 function placeOrder() {
+  if (!selectedOrderItem) return;
+
   closeModal();
-  const note = document.getElementById('order-note').value;
+  const note = document.getElementById('order-note').value.trim();
+  const eta = getOrderEta(selectedOrderItem);
   const req = {
     id: Date.now(),
-    seat: '14A',
+    seat: PASSENGER_SEAT,
     type: 'order',
-    item: 'Teh Tarik',
+    item: selectedOrderItem.name,
     qty: orderQty,
-    note: note,
+    note,
     status: 'new',
     timestamp: Date.now(),
-    eta: 360,
-    icon: '\u2615'
+    eta,
+    icon: selectedOrderItem.icon
   };
+
   saveRequest(req);
   activeRequest = req;
-  etaSeconds = 360;
+  etaSeconds = eta;
   startEtaCountdown();
   showActiveBanner();
   document.getElementById('order-badge').classList.add('show');
-  showToast('Order placed! Tracking your Teh Tarik.', 'success');
+  showToast(`${selectedOrderItem.name} requested. Tracking now live.`, 'success');
   navigateTo('track');
-}
-
-function saveRequest(req) {
-  const reqs = JSON.parse(localStorage.getItem('mhskyhub_requests') || '[]');
-  // Remove existing from same id if exists
-  const filtered = reqs.filter(r => r.id !== req.id);
-  filtered.push(req);
-  localStorage.setItem('mhskyhub_requests', JSON.stringify(filtered));
 }
 
 // ============================================================
@@ -614,29 +1051,138 @@ function startEtaCountdown() {
   }, 1000);
 }
 
+
+function getRequestRemainingEtaSeconds(request) {
+  if (!request) return 0;
+
+  const baseEta = Math.max(0, Number(request.eta || 0));
+  const updatedAt = Number(request.updatedAt || request.timestamp || Date.now());
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - updatedAt) / 1000));
+  return Math.max(0, baseEta - elapsedSeconds);
+}
+
+function formatEtaDisplay(totalSeconds) {
+  const safeSeconds = Math.max(0, Number(totalSeconds || 0));
+  const m = Math.floor(safeSeconds / 60);
+  const s = safeSeconds % 60;
+  return {
+    clock: m + ':' + String(s).padStart(2, '0'),
+    banner: m + ' min'
+  };
+}
+
+function isTrackRequestPending(request) {
+  if (!request) return false;
+  const status = String(request.status || '').toLowerCase();
+  return !['cancelled', 'completed', 'delivered'].includes(status);
+}
+
+function sortTrackRequests(requestsList) {
+  return [...requestsList].sort((a, b) => {
+    const aTime = Number(a.updatedAt || a.timestamp || 0);
+    const bTime = Number(b.updatedAt || b.timestamp || 0);
+    if (aTime !== bTime) return bTime - aTime;
+    return Number(b.id || 0) - Number(a.id || 0);
+  });
+}
+
+function getPendingTrackRequests() {
+  const requestsList = Array.isArray(pendingRequests) ? pendingRequests.filter(isTrackRequestPending) : [];
+  if (activeRequest && isTrackRequestPending(activeRequest) && !requestsList.some(req => Number(req.id) === Number(activeRequest.id))) {
+    requestsList.unshift({ ...activeRequest });
+  }
+  return sortTrackRequests(requestsList);
+}
+
+function formatTrackStatus(status) {
+  const labels = {
+    new: 'Received',
+    preparing: 'Preparing',
+    inprogress: 'Preparing',
+    ontheway: 'On the Way'
+  };
+  return labels[String(status || '').toLowerCase()] || 'In Progress';
+}
+
+function selectTrackRequest(requestId) {
+  const nextRequest = getPendingTrackRequests().find(req => Number(req.id) === Number(requestId));
+  if (!nextRequest) return;
+
+  const changed = !activeRequest || Number(activeRequest.id) !== Number(nextRequest.id);
+  activeRequest = { ...nextRequest };
+
+  if (changed) {
+    etaSeconds = getRequestRemainingEtaSeconds(activeRequest);
+    if (etaSeconds > 0) startEtaCountdown();
+  }
+
+  refreshTrackScreen();
+}
+
+function renderTrackQueue(requestsList) {
+  const section = document.getElementById('track-queue-section');
+  const queueEl = document.getElementById('track-queue');
+  if (!section || !queueEl) return;
+
+  const otherRequests = requestsList.filter(req => !activeRequest || Number(req.id) !== Number(activeRequest.id));
+  if (!otherRequests.length) {
+    section.style.display = 'none';
+    queueEl.innerHTML = '';
+    return;
+  }
+
+  section.style.display = 'block';
+  queueEl.innerHTML = otherRequests.map(req => {
+    const submittedMins = Math.max(0, Math.floor((Date.now() - Number(req.timestamp || Date.now())) / 60000));
+    const etaLabel = Math.max(1, Math.ceil(getRequestRemainingEtaSeconds(req) / 60));
+    const submittedLabel = submittedMins < 1 ? 'Submitted just now' : `Submitted ${submittedMins} min ago`;
+    return `
+      <button type="button" class="track-queue-item" onclick="selectTrackRequest(${Number(req.id)})">
+        <div class="track-item-icon">${req.icon || '\u2615'}</div>
+        <div class="track-queue-copy">
+          <div class="track-queue-name">${req.item}${req.qty > 1 ? ` \u00D7 ${req.qty}` : ''}</div>
+          <div class="track-queue-meta">${formatTrackStatus(req.status)} \u00B7 ${submittedLabel}</div>
+        </div>
+        <div class="track-queue-pill">~${etaLabel} min</div>
+      </button>
+    `;
+  }).join('');
+}
+
 function updateTrackDisplay() {
-  const m = Math.floor(etaSeconds / 60);
-  const s = etaSeconds % 60;
+  const display = formatEtaDisplay(etaSeconds);
   const etaEl = document.getElementById('track-eta');
-  if (etaEl) etaEl.textContent = m + ':' + String(s).padStart(2,'0');
+  if (etaEl) etaEl.textContent = display.clock;
 
   const banner = document.getElementById('banner-eta');
-  if (banner) banner.textContent = m + ' min';
+  if (banner) banner.textContent = display.banner;
 }
 
 function refreshTrackScreen() {
-  if (!activeRequest) {
-    const reqs = JSON.parse(localStorage.getItem('mhskyhub_requests') || '[]');
-    const pending = reqs.filter(r => r.status !== 'delivered').pop();
-    if (pending) {
-      activeRequest = pending;
-      etaSeconds = pending.eta || 360;
+  const requestsList = getPendingTrackRequests();
+
+  if (activeRequest) {
+    const matchingRequest = requestsList.find(req => Number(req.id) === Number(activeRequest.id));
+    if (matchingRequest) {
+      activeRequest = {
+        ...matchingRequest,
+        eta: etaSeconds > 0 ? Math.min(getRequestRemainingEtaSeconds(matchingRequest), etaSeconds) : getRequestRemainingEtaSeconds(matchingRequest)
+      };
+    } else {
+      activeRequest = null;
     }
+  }
+
+  if (!activeRequest && requestsList.length) {
+    activeRequest = { ...requestsList[0] };
+    etaSeconds = getRequestRemainingEtaSeconds(activeRequest);
+    if (etaSeconds > 0) startEtaCountdown();
   }
 
   if (!activeRequest) {
     document.getElementById('track-empty').style.display = 'block';
     document.getElementById('track-active').style.display = 'none';
+    renderTrackQueue([]);
     return;
   }
 
@@ -646,15 +1192,16 @@ function refreshTrackScreen() {
   document.getElementById('track-icon').textContent = activeRequest.icon || '\u2615';
   document.getElementById('track-name').textContent = activeRequest.item + (activeRequest.qty > 1 ? ' \u00D7 ' + activeRequest.qty : '');
 
-  const ago = Math.floor((Date.now() - activeRequest.timestamp) / 60000);
+  const ago = Math.floor((Date.now() - Number(activeRequest.timestamp || Date.now())) / 60000);
   document.getElementById('track-time').textContent = ago < 1 ? 'just now' : ago + ' min ago';
 
   updateTrackDisplay();
   updateProgressSteps(activeRequest.status);
+  renderTrackQueue(requestsList);
 
   const cancelBtn = document.getElementById('track-cancel-btn');
   if (cancelBtn) {
-    cancelBtn.style.display = (activeRequest.status === 'new' || activeRequest.status === 'preparing') ? 'block' : 'none';
+    cancelBtn.style.display = ['new', 'preparing', 'inprogress'].includes(String(activeRequest.status || '').toLowerCase()) ? 'block' : 'none';
   }
 }
 
@@ -793,14 +1340,16 @@ function init() {
   updateClock();
   updateFlightMap();
   refreshBluetoothWidget();
+  initWatchHeroInteractions();
   fetchPassengerChatMessages();
+  ensureOrderCatalogLoaded().catch(() => {});
 
   clockInterval = setInterval(() => {
     updateClock();
     updateFlightEta();
   }, 1000);
 
-  syncInterval = setInterval(syncFromLocalStorage, 2000);
+  if (syncInterval) clearInterval(syncInterval);
   chatPollInterval = setInterval(() => {
     fetchPassengerChatMessages({ silent: currentScreen !== 'chat' });
   }, CHAT_POLL_MS);

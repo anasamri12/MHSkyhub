@@ -7,6 +7,14 @@ try {
 const CREW_REQUEST_SYNC_MS = 5000;
 let crewSocket = null;
 let crewRequestPoll = null;
+let crewSyncInitialized = false;
+
+function crewAuthFetch(url, options) {
+  if (window.crewAuth && typeof window.crewAuth.fetch === 'function') {
+    return window.crewAuth.fetch(url, options);
+  }
+  return fetch(url, options);
+}
 
 function normalizeCrewRequest(request) {
   if (!request) return null;
@@ -69,7 +77,7 @@ async function fetchCrewRequestsFromApi(silent) {
   const quiet = silent === true;
 
   try {
-    const res = await fetch(`${API_BASE}/requests`, { cache: 'no-store' });
+    const res = await crewAuthFetch(`${API_BASE}/requests`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Crew request fetch failed: ${res.status}`);
 
     const payload = await res.json();
@@ -93,7 +101,7 @@ syncFromPassenger = function syncCrewFromBackend() {
 syncStatusToPassenger = function syncCrewStatusToBackend(request) {
   const payload = normalizeCrewRequest(request);
 
-  fetch(`${API_BASE}/requests/${encodeURIComponent(payload.id)}`, {
+  crewAuthFetch(`${API_BASE}/requests/${encodeURIComponent(payload.id)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -124,9 +132,12 @@ syncStatusToPassenger = function syncCrewStatusToBackend(request) {
 function connectCrewRealtime() {
   if (typeof io !== 'function' || crewSocket) return;
 
+  const token = window.crewAuth && typeof window.crewAuth.getToken === 'function' ? window.crewAuth.getToken() : '';
+
   crewSocket = io({
     auth: {
-      role: 'crew'
+      role: 'crew',
+      token
     }
   });
 
@@ -174,7 +185,11 @@ function connectCrewRealtime() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function startCrewSync() {
+  if (crewSyncInitialized) return;
+  if (window.crewAuth && typeof window.crewAuth.canBoot === 'function' && !window.crewAuth.canBoot()) return;
+
+  crewSyncInitialized = true;
   fetchCrewRequestsFromApi(true);
   connectCrewRealtime();
 
@@ -182,4 +197,20 @@ document.addEventListener('DOMContentLoaded', () => {
   crewRequestPoll = setInterval(() => {
     fetchCrewRequestsFromApi(true);
   }, CREW_REQUEST_SYNC_MS);
-});
+}
+
+function stopCrewSync() {
+  crewSyncInitialized = false;
+  if (crewRequestPoll) {
+    clearInterval(crewRequestPoll);
+    crewRequestPoll = null;
+  }
+  if (crewSocket) {
+    crewSocket.disconnect();
+    crewSocket = null;
+  }
+}
+
+window.startCrewSync = startCrewSync;
+window.stopCrewSync = stopCrewSync;
+document.addEventListener('DOMContentLoaded', startCrewSync);

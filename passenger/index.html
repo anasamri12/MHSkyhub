@@ -112,7 +112,7 @@
         <span class="sb-stat-label">TEMP</span>
 
 
-        <span class="sb-stat-val">24°C</span>
+        <span class="sb-stat-val">24&deg;C</span>
 
 
       </div>
@@ -153,6 +153,7 @@
 
           <div class="toilet-item">F<div class="toilet-dot available" id="toilet-f" onclick="toggleToilet('f',event)"></div></div>
 
+          <div class="toilet-item">M<div class="toilet-dot available" id="toilet-m" onclick="toggleToilet('m',event)"></div></div>
 
           <div class="toilet-item">R<div class="toilet-dot occupied" id="toilet-r" onclick="toggleToilet('r',event)"></div></div>
 
@@ -196,47 +197,37 @@
     <div class="screen active" id="screen-home">
 
 
-      <div class="home-welcome">
 
+<div class="home-top-row">
+  <div class="home-hero-stack">
+    <div class="home-welcome">
+      <h2>Welcome aboard,</h2>
+      <div class="passenger-name">Yusuf Al-Rahman</div>
+    </div>
 
-        <h2>Welcome aboard,</h2>
-
-
-        <div class="passenger-name">Yusuf Al-Rahman</div>
-
-
+    <div class="active-request-banner" id="active-banner" onclick="navigateTo('track')">
+      <div class="pulse-dot"></div>
+      <div>
+        <div class="banner-text">Request in progress</div>
+        <div class="banner-sub">Est. <span id="banner-eta">6 min</span> &middot; Tap to track</div>
       </div>
+      <div class="banner-arrow">&rsaquo;</div>
+    </div>
+  </div>
 
-
-
-
-
-      <div class="active-request-banner" id="active-banner" onclick="navigateTo('track')">
-
-
-        <div class="pulse-dot"></div>
-
-
-        <div>
-
-
-          <div class="banner-text">Request in progress</div>
-
-
-          <div class="banner-sub">Est. <span id="banner-eta">6 min</span> · Tap to track</div>
-
-
-        </div>
-
-
-        <div class="banner-arrow">›</div>
-
-
-      </div>
-
-
-
-
+  <button type="button" class="enrich-profile-launch" id="enrich-profile-launch" onclick="openPassengerAuthScreen()">
+    <div class="enrich-profile-avatar" id="enrich-profile-avatar" aria-hidden="true">
+      <span class="enrich-profile-wordmark">Enrich</span>
+      <span class="enrich-profile-mark"><img src="../assets/branding/malaysia-airlines-logo.png" alt=""></span>
+    </div>
+    <div class="enrich-profile-copy">
+      <div class="enrich-profile-eyebrow" id="enrich-profile-eyebrow">Optional Enrich Access</div>
+      <div class="enrich-profile-title" id="enrich-profile-title">Sign In to Enrich</div>
+      <div class="enrich-profile-sub" id="enrich-profile-sub">Tap to link your Malaysia Airlines account, access benefits, or create an account.</div>
+    </div>
+    <div class="enrich-profile-arrow">&rsaquo;</div>
+  </button>
+</div>
 
       <div class="tiles-grid">
 
@@ -403,6 +394,130 @@
       </div>
 
 
+    </div>
+
+
+
+
+
+    <div class="screen" id="screen-enrichauth">
+
+
+      <div class="back-btn" onclick="navigateTo('home')">&#8249; Back to Home</div>
+
+
+      <div class="screen-title">Enrich Account</div>
+
+
+      <div class="screen-sub">Sign in to your Malaysia Airlines account for Enrich benefits and journey syncing, or continue using the seatback app as a guest whenever you prefer.</div>
+
+
+      <div class="enrich-auth-layout">
+        <section class="enrich-auth-screen-card" id="enrich-auth-card">
+          <div class="enrich-auth-head">
+            <div class="enrich-auth-copy">
+              <div class="enrich-eyebrow">Malaysia Airlines Enrich</div>
+              <div class="enrich-auth-title">Link Your Journey</div>
+              <div class="enrich-auth-sub">Keep your member profile, benefits, and this KUL to LHR sector connected for a smoother premium experience.</div>
+            </div>
+
+            <div class="enrich-route-visual" aria-hidden="true">
+              <div class="enrich-route-grid"></div>
+              <div class="enrich-route-line"></div>
+              <div class="enrich-route-progress"></div>
+              <div class="enrich-route-dot enrich-kul"></div>
+              <div class="enrich-route-dot enrich-lhr"></div>
+              <div class="enrich-route-plane">&#9992;</div>
+              <div class="enrich-route-label enrich-kul-label">KUL</div>
+              <div class="enrich-route-label enrich-lhr-label">LHR</div>
+            </div>
+          </div>
+
+          <div class="enrich-auth-tabs" id="enrich-auth-tabs">
+            <button type="button" class="enrich-tab active" data-mode="signin" onclick="setPassengerAuthMode('signin')">Sign In</button>
+            <button type="button" class="enrich-tab" data-mode="signup" onclick="setPassengerAuthMode('signup')">Sign Up</button>
+          </div>
+
+          <div class="enrich-auth-status" id="enrich-auth-status"></div>
+
+          <div id="enrich-guest-panel">
+            <form class="enrich-form" id="enrich-signin-form" onsubmit="submitPassengerSignIn(event)">
+              <label class="enrich-field">
+                <span>Enrich ID or Email</span>
+                <input id="enrich-login-identifier" type="text" placeholder="MHENRICH14003 or name@email.com" autocomplete="username">
+              </label>
+              <label class="enrich-field">
+                <span>Password</span>
+                <input id="enrich-login-password" type="password" placeholder="Enter your password" autocomplete="current-password">
+              </label>
+              <button type="submit" class="btn btn-primary enrich-submit-btn">Sign In to Enrich</button>
+            </form>
+
+            <form class="enrich-form" id="enrich-signup-form" onsubmit="submitPassengerSignUp(event)" style="display:none;">
+              <label class="enrich-field">
+                <span>Full Name</span>
+                <input id="enrich-signup-name" type="text" placeholder="Name on your account" autocomplete="name">
+              </label>
+              <label class="enrich-field">
+                <span>Email</span>
+                <input id="enrich-signup-email" type="email" placeholder="your@email.com" autocomplete="email">
+              </label>
+              <label class="enrich-field">
+                <span>Password</span>
+                <input id="enrich-signup-password" type="password" placeholder="At least 6 characters" autocomplete="new-password">
+              </label>
+              <button type="submit" class="btn btn-primary enrich-submit-btn">Create Enrich Account</button>
+            </form>
+
+            <div class="enrich-guest-note">Optional: keep browsing movies, chat, and flight info even if you skip sign-in.</div>
+          </div>
+
+          <div class="enrich-member-panel" id="enrich-member-panel" style="display:none;">
+            <div class="enrich-member-meta">Signed in to Enrich</div>
+            <div class="enrich-member-name" id="enrich-member-name">Yusuf Al-Rahman</div>
+            <div class="enrich-member-id" id="enrich-member-id">Enrich ID MHENRICH14003 &middot; Tier Enrich Gold</div>
+            <div class="enrich-benefits">
+              <span class="enrich-benefit-pill">Mileage ready</span>
+              <span class="enrich-benefit-pill">Journey synced</span>
+              <span class="enrich-benefit-pill">Member offers</span>
+            </div>
+            <div class="enrich-member-actions">
+              <button type="button" class="btn btn-primary enrich-action-btn" onclick="viewPassengerBenefits()">View Benefits</button>
+              <button type="button" class="btn btn-secondary enrich-action-btn" onclick="signOutPassenger()">Sign Out</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="enrich-journey-card">
+          <div class="enrich-eyebrow">Member Benefits</div>
+          <div class="enrich-journey-route">KUL &rarr; LHR</div>
+          <div class="enrich-journey-sub">Use your Enrich account to keep this sector connected to your Malaysia Airlines profile and passenger preferences.</div>
+
+          <div class="enrich-journey-list">
+            <div class="enrich-journey-item">
+              <div class="enrich-journey-icon">&#10003;</div>
+              <div>
+                <div class="enrich-journey-item-title">Journey Profile</div>
+                <div class="enrich-journey-item-sub">Keep member details and preferences ready while you fly.</div>
+              </div>
+            </div>
+            <div class="enrich-journey-item">
+              <div class="enrich-journey-icon">&#10003;</div>
+              <div>
+                <div class="enrich-journey-item-title">Benefit Visibility</div>
+                <div class="enrich-journey-item-sub">Quick access to your Enrich tier and linked journey benefits.</div>
+              </div>
+            </div>
+            <div class="enrich-journey-item">
+              <div class="enrich-journey-icon">&#10003;</div>
+              <div>
+                <div class="enrich-journey-item-title">Optional by Design</div>
+                <div class="enrich-journey-item-sub">You can still use entertainment, service requests, and flight info without signing in.</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
 
 
@@ -1185,393 +1300,45 @@
 
     </div>
 
-
-
-
-
-    <!-- ORDER SCREEN -->
-
-
-    <div class="screen" id="screen-order">
-
-
-
-
-
-      <!-- State 1: Categories -->
-
-
-      <div class="order-state active" id="order-categories">
-
-
-        <div class="screen-title">Order Onboard</div>
-
-
-        <div class="cat-grid">
-
-
-          <div class="cat-card" onclick="showOrderItems()">
-
-
-            <div class="cat-icon">&#9749;</div>
-
-
-            <div class="cat-name">Hot Drinks</div>
-
-
-            <div class="cat-count">6 items</div>
-
-
-          </div>
-
-
-          <div class="cat-card" onclick="showToast('Cold Drinks coming soon','info')">
-
-
-            <div class="cat-icon">&#129482;</div>
-
-
-            <div class="cat-name">Cold Drinks</div>
-
-
-            <div class="cat-count">8 items</div>
-
-
-          </div>
-
-
-          <div class="cat-card" onclick="showToast('Snacks coming soon','info')">
-
-
-            <div class="cat-icon">&#127857;</div>
-
-
-            <div class="cat-name">Snacks</div>
-
-
-            <div class="cat-count">12 items</div>
-
-
-          </div>
-
-
-          <div class="cat-card" onclick="showToast('Meals coming soon','info')">
-
-
-            <div class="cat-icon">&#127869;</div>
-
-
-            <div class="cat-name">Meals</div>
-
-
-            <div class="cat-count">5 items</div>
-
-
-          </div>
-
-
-          <div class="cat-card" onclick="showToast('Comfort Items coming soon','info')">
-
-
-            <div class="cat-icon">&#128719;</div>
-
-
-            <div class="cat-name">Comfort Items</div>
-
-
-            <div class="cat-count">4 items</div>
-
-
-          </div>
-
-
-          <div class="cat-card" onclick="showToast('Accessories coming soon','info')">
-
-
-            <div class="cat-icon">&#127911;</div>
-
-
-            <div class="cat-name">Accessories</div>
-
-
-            <div class="cat-count">3 items</div>
-
-
-          </div>
-
-
-        </div>
-
-
+<!-- ORDER SCREEN -->
+<div class="screen" id="screen-order">
+  <div class="order-state active" id="order-categories">
+    <div class="screen-title">Order Onboard</div>
+    <div class="cat-grid" id="order-category-grid"></div>
+  </div>
+
+  <div class="order-state" id="order-items">
+    <div class="back-btn" onclick="showOrderCategories()">&#8249; Back</div>
+    <div class="screen-title" id="order-items-title">Order Onboard</div>
+    <div id="order-items-list"></div>
+  </div>
+
+  <div class="order-state" id="order-detail">
+    <div class="back-btn" onclick="showOrderItems()">&#8249; Back</div>
+    <div class="detail-hero">
+      <div class="detail-emoji" id="order-detail-icon">&#9749;</div>
+      <div class="detail-info">
+        <div class="detail-name" id="order-detail-name">Teh Tarik</div>
+        <div class="detail-price" id="order-detail-price">Complimentary</div>
+        <div class="detail-desc" id="order-detail-desc">A refreshed onboard catalogue of Malaysian favourites, classic flight snacks, and useful comfort items.</div>
       </div>
-
-
-
-
-
-      <!-- State 2: Items List -->
-
-
-      <div class="order-state" id="order-items">
-
-
-        <div class="back-btn" onclick="showOrderCategories()">‹ Back</div>
-
-
-        <div class="screen-title">Hot Drinks</div>
-
-
-        <div class="item-row" onclick="showOrderDetail()">
-
-
-          <div class="item-emoji-box">&#9749;</div>
-
-
-          <div class="item-info">
-
-
-            <div class="item-name">Teh Tarik</div>
-
-
-            <div class="item-desc">Malaysian pulled milk tea, rich & frothy</div>
-
-
-          </div>
-
-
-          <div class="item-price">Complimentary</div>
-
-
-          <div class="item-chevron">›</div>
-
-
-        </div>
-
-
-        <div class="item-row" onclick="showToast('Kopi O selected','info')">
-
-
-          <div class="item-emoji-box">&#9749;</div>
-
-
-          <div class="item-info">
-
-
-            <div class="item-name">Kopi O</div>
-
-
-            <div class="item-desc">Traditional Malaysian black coffee</div>
-
-
-          </div>
-
-
-          <div class="item-price">Complimentary</div>
-
-
-          <div class="item-chevron">›</div>
-
-
-        </div>
-
-
-        <div class="item-row" onclick="showToast('English Breakfast Tea selected','info')">
-
-
-          <div class="item-emoji-box">&#127861;</div>
-
-
-          <div class="item-info">
-
-
-            <div class="item-name">English Breakfast Tea</div>
-
-
-            <div class="item-desc">Classic blend with milk</div>
-
-
-          </div>
-
-
-          <div class="item-price">Complimentary</div>
-
-
-          <div class="item-chevron">›</div>
-
-
-        </div>
-
-
-        <div class="item-row" onclick="showToast('Americano selected','info')">
-
-
-          <div class="item-emoji-box">&#9749;</div>
-
-
-          <div class="item-info">
-
-
-            <div class="item-name">Americano</div>
-
-
-            <div class="item-desc">Bold espresso with hot water</div>
-
-
-          </div>
-
-
-          <div class="item-price">Complimentary</div>
-
-
-          <div class="item-chevron">›</div>
-
-
-        </div>
-
-
-        <div class="item-row" onclick="showToast('Hot Chocolate selected','info')">
-
-
-          <div class="item-emoji-box">&#127851;</div>
-
-
-          <div class="item-info">
-
-
-            <div class="item-name">Hot Chocolate</div>
-
-
-            <div class="item-desc">Rich creamy cocoa</div>
-
-
-          </div>
-
-
-          <div class="item-price">Complimentary</div>
-
-
-          <div class="item-chevron">›</div>
-
-
-        </div>
-
-
-        <div class="item-row" onclick="showToast('Green Tea selected','info')">
-
-
-          <div class="item-emoji-box">&#127861;</div>
-
-
-          <div class="item-info">
-
-
-            <div class="item-name">Green Tea</div>
-
-
-            <div class="item-desc">Delicate Japanese matcha blend</div>
-
-
-          </div>
-
-
-          <div class="item-price">Complimentary</div>
-
-
-          <div class="item-chevron">›</div>
-
-
-        </div>
-
-
-      </div>
-
-
-
-
-
-      <!-- State 3: Item Detail -->
-
-
-      <div class="order-state" id="order-detail">
-
-
-        <div class="back-btn" onclick="showOrderItems()">‹ Back</div>
-
-
-        <div class="detail-hero">
-
-
-          <div class="detail-emoji">&#9749;</div>
-
-
-          <div class="detail-info">
-
-
-            <div class="detail-name">Teh Tarik</div>
-
-
-            <div class="detail-price">Included</div>
-
-
-            <div class="detail-desc">A beloved Malaysian classic — freshly pulled milk tea with a frothy top, served piping hot. A taste of home at 35,000 feet.</div>
-
-
-          </div>
-
-
-        </div>
-
-
-
-
-
-        <div class="qty-control">
-
-
-          <div class="qty-label">Quantity</div>
-
-
-          <button class="qty-btn" onclick="changeQty(-1)">-</button>
-
-
-          <div class="qty-value" id="qty-val">1</div>
-
-
-          <button class="qty-btn" onclick="changeQty(1)">+</button>
-
-
-        </div>
-
-
-
-
-
-        <textarea class="note-area" id="order-note" placeholder="Any special requests? (e.g. extra hot, less sweet)"></textarea>
-
-
-
-
-
-        <div class="order-btns">
-
-
-          <button class="btn btn-secondary" onclick="showOrderCategories()">Cancel</button>
-
-
-          <button class="btn btn-primary" onclick="showOrderConfirmModal()">Confirm Order</button>
-
-
-        </div>
-
-
-      </div>
-
-
     </div>
 
+    <div class="qty-control">
+      <div class="qty-label">Quantity</div>
+      <button class="qty-btn" onclick="changeQty(-1)">-</button>
+      <div class="qty-value" id="qty-val">1</div>
+      <button class="qty-btn" onclick="changeQty(1)">+</button>
+    </div>
 
+    <textarea class="note-area" id="order-note" placeholder="Any special requests? (e.g. extra hot, less sweet)"></textarea>
 
-
+    <div class="order-btns">
+      <button class="btn btn-secondary" onclick="showOrderCategories()">Cancel</button>
+      <button class="btn btn-primary" id="order-confirm-btn" onclick="showOrderConfirmModal()">Confirm Order</button>
+    </div>
+  </div>
+</div>
 
     <!-- ASSIST SCREEN -->
 
@@ -1786,7 +1553,7 @@
       <div class="chat-input-row">
 
 
-        <input type="text" class="chat-input" id="chat-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendChat()">
+        <input type="text" class="chat-input" id="chat-input" placeholder="Type a message&hellip;" onkeydown="if(event.key==='Enter')sendChat()">
 
 
         <button class="chat-send" onclick="sendChat()">&#10148;</button>
@@ -2470,6 +2237,12 @@
 
 
 
+
+<div class="track-queue-section" id="track-queue-section" style="display:none;">
+  <div class="section-title">Also In Progress</div>
+  <div id="track-queue" class="track-queue"></div>
+</div>
+
       <div id="track-history" class="track-history" style="display:none;">
 
 
@@ -2506,7 +2279,7 @@
         <div class="map-topline">
 
 
-          <div class="map-pill">MH 003 · A350-900</div>
+          <div class="map-pill">MH 003 &middot; A350-900</div>
 
 
           <div class="map-pill" id="map-progress-pill">54% Complete</div>
@@ -2596,6 +2369,54 @@
 
 
 
+      <div class="flight-globe-panel">
+
+
+        <div class="globe-panel-head">
+          <div>
+            <div class="globe-panel-kicker">Flight Map</div>
+            <div class="globe-panel-title">Global Position View</div>
+          </div>
+          <div class="globe-panel-pill" id="globe-progress-pill">54% Along Route</div>
+        </div>
+
+
+        <div class="globe-panel-body">
+          <div class="globe-visual" aria-hidden="true">
+            <div class="globe-lat globe-lat-one"></div>
+            <div class="globe-lat globe-lat-two"></div>
+            <div class="globe-lat globe-lat-three"></div>
+            <div class="globe-lon globe-lon-one"></div>
+            <div class="globe-lon globe-lon-two"></div>
+            <div class="globe-lon globe-lon-three"></div>
+            <div class="globe-track"></div>
+            <div class="globe-marker" id="globe-marker"></div>
+            <div class="globe-plane" id="globe-plane">&#9992;&#65039;</div>
+          </div>
+
+          <div class="globe-meta">
+            <div class="globe-meta-card">
+              <div class="globe-meta-label">Current Region</div>
+              <div class="globe-meta-value" id="globe-current-location">Northwest India</div>
+              <div class="globe-meta-sub">Live position mirrored from the route progress above.</div>
+            </div>
+
+            <div class="globe-meta-card">
+              <div class="globe-meta-label">Coordinates</div>
+              <div class="globe-meta-value" id="globe-current-coords">27.6&deg;N, 75.0&deg;E</div>
+              <div class="globe-meta-sub">Projected onto a compact global view for the seatback display.</div>
+            </div>
+
+            <div class="globe-meta-card">
+              <div class="globe-meta-label">Next Route Segment</div>
+              <div class="globe-meta-value" id="globe-next-waypoint">Pakistan Corridor</div>
+              <div class="globe-meta-sub" id="globe-progress-copy">54% complete &middot; London Heathrow is the final arrival point.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
       <div class="map-status-strip">
 
 
@@ -2620,7 +2441,7 @@
           <div class="map-status-label">Coordinates</div>
 
 
-          <div class="map-status-value" id="map-current-coords">27.6°N, 75.0°E</div>
+          <div class="map-status-value" id="map-current-coords">27.6&deg;N, 75.0&deg;E</div>
 
 
           <div class="map-status-sub">Approximate live location for this prototype.</div>
@@ -2638,7 +2459,7 @@
           <div class="map-status-value" id="map-progress-text">54%</div>
 
 
-          <div class="map-status-sub" id="map-progress-sub">7h 23m flown · 6h 22m remaining</div>
+          <div class="map-status-sub" id="map-progress-sub">7h 23m flown &middot; 6h 22m remaining</div>
 
 
         </div>
@@ -2972,6 +2793,9 @@
 
 
   <script src="js/app.js"></script>
+
+
+  <script src="js/auth.js"></script>
 
 
   <script src="js/backend-sync.js"></script>

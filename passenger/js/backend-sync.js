@@ -55,15 +55,17 @@ async function fetchPassengerRequestsFromApi() {
   return (payload.requests || []).map(normalizePassengerRequest);
 }
 
-function getLatestPassengerRequest(requestsList) {
-  if (!requestsList.length) return null;
-
+function sortPassengerRequests(requestsList) {
   return [...requestsList].sort((a, b) => {
     const aTime = Number(a.updatedAt || a.timestamp || 0);
     const bTime = Number(b.updatedAt || b.timestamp || 0);
     if (aTime !== bTime) return bTime - aTime;
     return Number(b.id || 0) - Number(a.id || 0);
-  })[0];
+  });
+}
+
+function getActivePassengerRequests(requestsList) {
+  return sortPassengerRequests((requestsList || []).filter(request => isPassengerRequestActive(request.status)));
 }
 
 function clearPassengerActiveState() {
@@ -93,53 +95,90 @@ function notifyPassengerStatusChange(status) {
   }
 }
 
-function applyPassengerRequestUpdate(request) {
-  const normalized = normalizePassengerRequest(request);
-  const previous = activeRequest ? { ...activeRequest } : null;
+function syncPassengerRequestHistory(requestsList) {
+  (requestsList || []).forEach(request => {
+    const normalized = normalizePassengerRequest(request);
+    if (!normalized) return;
 
-  if (!normalized) {
-    clearPassengerActiveState();
-    refreshTrackScreen();
-    return;
-  }
-
-  if (!isPassengerRequestActive(normalized.status)) {
-    if (
-      previous &&
-      previous.id === normalized.id &&
-      ['delivered', 'completed'].includes(normalized.status) &&
-      !passengerCompletedHistory.has(normalized.id)
-    ) {
+    const status = String(normalized.status || '').toLowerCase();
+    if (['delivered', 'completed'].includes(status) && !passengerCompletedHistory.has(normalized.id)) {
       addHistory(normalized);
       passengerCompletedHistory.add(normalized.id);
-      notifyPassengerStatusChange(normalized.status);
-    } else if (previous && previous.id === normalized.id && previous.status !== normalized.status) {
-      notifyPassengerStatusChange(normalized.status);
     }
+  });
+}
 
+function setPassengerPendingRequests(requestsList, options = {}) {
+  const previous = activeRequest ? { ...activeRequest } : null;
+  const preferredId = options.preferredId != null
+    ? Number(options.preferredId)
+    : (previous ? Number(previous.id) : null);
+
+  pendingRequests = getActivePassengerRequests((requestsList || []).map(normalizePassengerRequest).filter(Boolean));
+  const nextActive = pendingRequests.find(request => Number(request.id) === preferredId) || pendingRequests[0] || null;
+
+  if (!nextActive) {
+    pendingRequests = [];
     clearPassengerActiveState();
     refreshTrackScreen();
-    return;
+    return null;
   }
 
-  activeRequest = normalized;
+  activeRequest = { ...nextActive };
+  const incomingEta = typeof getRequestRemainingEtaSeconds === 'function'
+    ? getRequestRemainingEtaSeconds(nextActive)
+    : Number(nextActive.eta || 0);
 
-  if (!previous || previous.id !== normalized.id) {
-    etaSeconds = normalized.eta;
+  if (!previous || Number(previous.id) !== Number(activeRequest.id)) {
+    etaSeconds = incomingEta;
     if (etaSeconds > 0) startEtaCountdown();
   } else {
-    if (typeof normalized.eta === 'number' && normalized.eta >= 0) {
-      etaSeconds = normalized.eta;
-    }
-    if (previous.status !== normalized.status) {
-      notifyPassengerStatusChange(normalized.status);
+    if (previous.status !== activeRequest.status) {
+      notifyPassengerStatusChange(activeRequest.status);
+      etaSeconds = incomingEta;
+      if (etaSeconds > 0) startEtaCountdown();
+    } else if (Number.isFinite(incomingEta) && incomingEta >= 0) {
+      if (etaSeconds <= 0 || incomingEta === 0 || incomingEta < etaSeconds) {
+        etaSeconds = incomingEta;
+      }
     }
   }
 
+  activeRequest.eta = etaSeconds;
   showActiveBanner();
   const badge = document.getElementById('order-badge');
   if (badge) badge.classList.add('show');
   refreshTrackScreen();
+  return activeRequest;
+}
+
+function applyPassengerRequestUpdate(request, options = {}) {
+  const normalized = normalizePassengerRequest(request);
+  if (!normalized) {
+    syncPassengerRequests(true);
+    return;
+  }
+
+  const status = String(normalized.status || '').toLowerCase();
+  if (['delivered', 'completed'].includes(status) && !passengerCompletedHistory.has(normalized.id)) {
+    addHistory(normalized);
+    passengerCompletedHistory.add(normalized.id);
+  }
+
+  if (status === 'cancelled') {
+    const remaining = pendingRequests.filter(entry => Number(entry.id) !== Number(normalized.id));
+    setPassengerPendingRequests(remaining, { preferredId: remaining[0] ? remaining[0].id : null });
+    return;
+  }
+
+  const merged = sortPassengerRequests([
+    ...pendingRequests.filter(entry => Number(entry.id) !== Number(normalized.id)),
+    normalized
+  ]);
+
+  setPassengerPendingRequests(merged, {
+    preferredId: options.focusIncoming ? normalized.id : (activeRequest ? activeRequest.id : normalized.id)
+  });
 }
 
 async function syncPassengerRequests(silent) {
@@ -147,18 +186,29 @@ async function syncPassengerRequests(silent) {
 
   try {
     const requestsList = await fetchPassengerRequestsFromApi();
-    const active = requestsList.find(req => activeRequest && req.id === activeRequest.id);
-    const latest = getLatestPassengerRequest(requestsList);
+    const previous = activeRequest ? { ...activeRequest } : null;
+    syncPassengerRequestHistory(requestsList);
 
-    if (active) {
-      applyPassengerRequestUpdate(active);
-    } else if (latest) {
-      applyPassengerRequestUpdate(latest);
-    } else {
-      clearPassengerActiveState();
-      refreshTrackScreen();
+    if (previous) {
+      const snapshot = requestsList.find(request => Number(request.id) === Number(previous.id));
+      if (snapshot && String(snapshot.status || '').toLowerCase() !== String(previous.status || '').toLowerCase()) {
+        notifyPassengerStatusChange(String(snapshot.status || '').toLowerCase());
+      }
     }
 
+    const activeRequests = getActivePassengerRequests(requestsList);
+    if (!activeRequests.length) {
+      pendingRequests = [];
+      clearPassengerActiveState();
+      refreshTrackScreen();
+      return true;
+    }
+
+    const preferredId = previous && activeRequests.some(request => Number(request.id) === Number(previous.id))
+      ? previous.id
+      : activeRequests[0].id;
+
+    setPassengerPendingRequests(activeRequests, { preferredId });
     return true;
   } catch (error) {
     if (!quiet) console.error('Could not sync passenger requests:', error);
@@ -177,7 +227,7 @@ saveRequest = function saveRequestToBackend(request) {
     .then(async res => {
       if (!res.ok) throw new Error(`Passenger request save failed: ${res.status}`);
       const response = await res.json();
-      applyPassengerRequestUpdate(response.request);
+      applyPassengerRequestUpdate(response.request, { focusIncoming: true });
     })
     .catch(error => {
       console.error('Could not save passenger request:', error);
@@ -210,25 +260,23 @@ cancelRequest = function cancelPassengerRequest() {
   if (!activeRequest) return;
 
   const requestId = activeRequest.id;
-
   fetch(`${API_BASE}/requests/${encodeURIComponent(requestId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'cancelled', eta: 0 })
+    body: JSON.stringify({ seat: PASSENGER_SEAT, status: 'cancelled', eta: 0 })
   })
     .then(async res => {
       if (!res.ok) throw new Error(`Passenger request cancel failed: ${res.status}`);
       const response = await res.json();
-      applyPassengerRequestUpdate(response.request);
+      const remaining = pendingRequests.filter(entry => Number(entry.id) !== Number(requestId));
+      setPassengerPendingRequests(remaining, { preferredId: remaining[0] ? remaining[0].id : null });
+      showToast('Request cancelled', 'info');
+      if (response && response.request) syncPassengerRequests(true);
     })
     .catch(error => {
       console.error('Could not cancel passenger request:', error);
       showToast('Unable to cancel the request right now', 'info');
     });
-
-  clearPassengerActiveState();
-  refreshTrackScreen();
-  showToast('Request cancelled', 'info');
 };
 
 function connectPassengerRealtime() {
@@ -256,12 +304,12 @@ function connectPassengerRealtime() {
 
   passengerSocket.on('request:created', request => {
     if (String(request.seat || '').trim().toUpperCase() !== PASSENGER_SEAT) return;
-    applyPassengerRequestUpdate(request);
+    syncPassengerRequests(true);
   });
 
   passengerSocket.on('request:updated', request => {
     if (String(request.seat || '').trim().toUpperCase() !== PASSENGER_SEAT) return;
-    applyPassengerRequestUpdate(request);
+    syncPassengerRequests(true);
   });
 }
 

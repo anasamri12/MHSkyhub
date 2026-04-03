@@ -55,6 +55,16 @@ let prevPassengerReqIds = new Set();
 let crewChatSeat = DEFAULT_CHAT_SEAT;
 let crewChatMessages = [];
 let crewChatInitialized = false;
+let crewAppInitialized = false;
+let crewClockInterval = null;
+let crewFiltersBound = false;
+
+function crewApiFetch(url, options) {
+  if (window.crewAuth && typeof window.crewAuth.fetch === 'function') {
+    return window.crewAuth.fetch(url, options);
+  }
+  return fetch(url, options);
+}
 
 function hasUsableIcon(icon) {
   const value = String(icon || '').trim();
@@ -158,7 +168,7 @@ function renderCrewChatMessages(messages) {
 
 async function fetchCrewChatThreads(silent) {
   try {
-    const res = await fetch(`${API_BASE}/chat/threads`, { cache: 'no-store' });
+    const res = await crewApiFetch(`${API_BASE}/chat/threads`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Thread fetch failed: ' + res.status);
     const payload = await res.json();
     renderCrewChatSeatOptions(payload.threads || []);
@@ -176,7 +186,7 @@ async function fetchCrewChatMessages(silent) {
   const previousLastId = crewChatMessages.length ? crewChatMessages[crewChatMessages.length - 1].id : 0;
 
   try {
-    const res = await fetch(`${API_BASE}/chat?seat=${encodeURIComponent(seat)}`, { cache: 'no-store' });
+    const res = await crewApiFetch(`${API_BASE}/crew/chat?seat=${encodeURIComponent(seat)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Chat fetch failed: ' + res.status);
 
     const payload = await res.json();
@@ -218,7 +228,7 @@ async function sendCrewChat() {
   input.disabled = true;
 
   try {
-    const res = await fetch(`${API_BASE}/chat`, {
+    const res = await crewApiFetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ seat: normalizeChatSeat(crewChatSeat), from: 'crew', text })
@@ -244,12 +254,16 @@ async function sendCrewChat() {
 // INIT
 // ============================================================
 async function init() {
+  if (crewAppInitialized) return;
+  if (window.crewAuth && typeof window.crewAuth.canBoot === 'function' && !window.crewAuth.canBoot()) return;
+
+  crewAppInitialized = true;
   loadRequests();
   renderSidebar();
   renderCabinMap();
   updateBadges();
   updateClock();
-  setInterval(updateClock, 1000);
+  if (!crewClockInterval) crewClockInterval = setInterval(updateClock, 1000);
   await fetchCrewChatThreads(false);
   await fetchCrewChatMessages(false);
   syncInterval = setInterval(() => {
@@ -258,13 +272,27 @@ async function init() {
     fetchCrewChatMessages(true);
   }, CHAT_POLL_MS);
 
-  // Section filter buttons
-  document.querySelectorAll('.section-filter-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('.section-filter-btn').forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
+  if (!crewFiltersBound) {
+    document.querySelectorAll('.section-filter-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.section-filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+      });
     });
-  });
+    crewFiltersBound = true;
+  }
+}
+
+function stopCrewApp() {
+  crewAppInitialized = false;
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
+  if (crewClockInterval) {
+    clearInterval(crewClockInterval);
+    crewClockInterval = null;
+  }
 }
 
 function loadRequests() {
@@ -657,4 +685,6 @@ function showToast(msg, type) {
 // ============================================================
 // (already handled inline in HTML above)
 
+window.startCrewApp = init;
+window.stopCrewApp = stopCrewApp;
 document.addEventListener('DOMContentLoaded', init);

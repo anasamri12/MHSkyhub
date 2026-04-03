@@ -105,11 +105,10 @@
     background:linear-gradient(180deg, rgba(7,28,46,0.78), rgba(10,67,93,0.26));
     overflow:hidden;
   }
-  .sidebar-filters { display:flex; overflow-x:auto; padding:10px 12px 0; gap:4px; border-bottom:1px solid var(--glass-border); flex-shrink:0; }
-  .sidebar-filters::-webkit-scrollbar { display:none; }
-  .filter-tab { white-space:nowrap; padding:6px 10px; border-radius:8px; font-size:11px; font-weight:600; cursor:pointer; color:var(--text-muted); transition:all 0.15s; margin-bottom:10px; display:flex; align-items:center; gap:5px; }
+  .sidebar-filters { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); padding:10px 12px; gap:8px; border-bottom:1px solid var(--glass-border); flex-shrink:0; }
+  .filter-tab { min-width:0; white-space:normal; padding:8px 10px; border-radius:10px; font-size:11px; font-weight:600; cursor:pointer; color:var(--text-muted); transition:all 0.15s; display:flex; align-items:center; justify-content:space-between; gap:8px; line-height:1.25; background:rgba(244,239,227,0.03); border:1px solid rgba(244,239,227,0.06); }
   .filter-tab.active { background:rgba(244,239,227,0.10); color:var(--text-primary); }
-  .filter-count { background:rgba(244,239,227,0.14); border-radius:10px; padding:1px 6px; font-size:9px; font-weight:700; }
+  .filter-count { background:rgba(244,239,227,0.14); border-radius:10px; padding:1px 6px; font-size:9px; font-weight:700; flex-shrink:0; }
   .filter-tab.active .filter-count { background:var(--gold); color:var(--deep-navy); }
   .sidebar-search { padding:10px 12px; border-bottom:1px solid var(--glass-border); flex-shrink:0; }
   .search-input { width:100%; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; color:#fff; font-family:'Inter','Segoe UI Emoji','Segoe UI Symbol','Apple Color Emoji','Noto Color Emoji',sans-serif; font-size:12px; }
@@ -326,3 +325,23 @@
   .no-select-sub { font-size:13px; line-height:1.5; }
   .section-divider { height:1px; background:var(--glass-border); margin:20px 0; }
   .pill { display:inline-block; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:600; }
+
+
+  .crew-auth-btn { border:none; border-radius:999px; padding:8px 14px; background:rgba(244,239,227,0.08); border:1px solid rgba(244,239,227,0.12); color:var(--gold-light); font-family:'Inter',sans-serif; font-size:11px; font-weight:700; cursor:pointer; }
+  .crew-auth-btn:hover { background:rgba(244,239,227,0.14); }
+  body.auth-locked #app { filter:blur(10px); pointer-events:none; user-select:none; }
+  .crew-auth-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(6,18,30,0.72); backdrop-filter:blur(18px); z-index:2500; }
+  .crew-auth-overlay.show { display:flex; }
+  .crew-auth-card { width:min(440px, 100%); padding:28px; border-radius:24px; border:1px solid rgba(244,239,227,0.14); background:linear-gradient(180deg, rgba(8,31,53,0.97), rgba(10,68,93,0.97)); box-shadow:0 30px 60px rgba(0,0,0,0.28); }
+  .crew-auth-mark { width:56px; height:56px; border-radius:16px; overflow:hidden; margin-bottom:18px; box-shadow:0 10px 24px rgba(5,21,33,0.28); }
+  .crew-auth-mark img { width:100%; height:100%; display:block; object-fit:cover; }
+  .crew-auth-kicker { font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--gold-light); margin-bottom:8px; }
+  .crew-auth-title { font-size:28px; line-height:1.15; margin-bottom:10px; color:var(--text-primary); }
+  .crew-auth-sub { font-size:14px; line-height:1.6; color:var(--text-secondary); margin-bottom:20px; }
+  .crew-auth-form { display:flex; flex-direction:column; gap:10px; }
+  .crew-auth-label { font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.7px; margin-top:4px; }
+  .crew-auth-input { width:100%; border-radius:14px; border:1px solid rgba(244,239,227,0.14); background:rgba(244,239,227,0.06); color:#fff; padding:13px 14px; font-family:'Inter',sans-serif; font-size:14px; }
+  .crew-auth-input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(195,165,106,0.12); }
+  .crew-auth-error { min-height:20px; font-size:12px; color:#F29AAA; margin-top:4px; }
+  .crew-auth-submit { width:100%; margin-top:6px; }
+  .crew-auth-demo { margin-top:16px; font-size:12px; color:var(--text-muted); }

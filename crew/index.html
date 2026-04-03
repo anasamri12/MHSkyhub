@@ -54,6 +54,7 @@
         <div class="crew-name">Sarah Lim</div>
         <div class="crew-role">Senior Flight Attendant</div>
       </div>
+      <button class="crew-auth-btn" id="crew-auth-btn" type="button" onclick="if(window.crewAuth) window.crewAuth.logout()">Log Out</button>
     </div>
   </div>
 
@@ -245,10 +246,30 @@
   </div><!-- end main layout -->
 </div><!-- end app -->
 
+
+<div class="crew-auth-overlay" id="crew-auth-overlay" aria-hidden="true">
+  <div class="crew-auth-card">
+    <div class="crew-auth-mark"><img src="../assets/branding/malaysia-airlines-logo.png" alt="Malaysia Airlines logo"></div>
+    <div class="crew-auth-kicker">Crew Access</div>
+    <h1 class="crew-auth-title">Sign in to the cabin dashboard</h1>
+    <p class="crew-auth-sub">Crew credentials are required to view live requests, passenger chat, and service updates.</p>
+    <form id="crew-login-form" class="crew-auth-form">
+      <label class="crew-auth-label" for="crew-login-username">Username</label>
+      <input class="crew-auth-input" id="crew-login-username" name="username" type="text" autocomplete="username" placeholder="Enter crew username" required>
+      <label class="crew-auth-label" for="crew-login-password">Password</label>
+      <input class="crew-auth-input" id="crew-login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+      <div class="crew-auth-error" id="crew-login-error" role="alert"></div>
+      <button class="btn btn-primary crew-auth-submit" id="crew-login-submit" type="submit">Sign In</button>
+    </form>
+    <div class="crew-auth-demo">Demo crew login: <strong>crew</strong> / <strong>mhcrew123</strong></div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
   <script src="js/backend-sync.js"></script>
 </body>

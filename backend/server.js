@@ -10,6 +10,7 @@ const {
   hashPassword,
   initDb,
   findUserByUsername,
+  createPassengerUser,
   listChatMessages,
   listChatThreads,
   createChatMessage,
@@ -62,11 +63,28 @@ function buildToken(user) {
       sub: user.id,
       username: user.username,
       role: user.role,
-      seat: user.seat || null
+      seat: user.seat || null,
+      displayName: user.displayName || user.username,
+      email: user.email || null,
+      enrichId: user.enrichId || null,
+      tier: user.tier || null
     },
     JWT_SECRET,
     { expiresIn: '12h' }
   );
+}
+
+function serializeAuthUser(user) {
+  return {
+    id: user.id || user.sub,
+    username: user.username,
+    role: user.role,
+    seat: user.seat || null,
+    displayName: user.displayName || user.username,
+    email: user.email || null,
+    enrichId: user.enrichId || null,
+    tier: user.tier || null
+  };
 }
 
 function extractBearerToken(headerValue) {
@@ -159,38 +177,53 @@ app.get('/crew', (req, res) => {
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body || {};
+  const { identifier, username, password } = req.body || {};
+  const loginIdentifier = String(identifier || username || '').trim();
 
-  if (!username || !password) {
-    return res.status(400).json({ error: '"username" and "password" are required' });
+  if (!loginIdentifier || !password) {
+    return res.status(400).json({ error: '"identifier" and "password" are required' });
   }
 
-  const user = await findUserByUsername(String(username).trim());
-  if (!user || user.password_hash !== hashPassword(password)) {
+  const user = await findUserByUsername(loginIdentifier);
+  if (!user || user.passwordHash !== hashPassword(password)) {
     return res.status(401).json({ error: 'Invalid username or password' });
   }
 
   const token = buildToken(user);
-  res.json({
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      seat: user.seat || null
+  res.json({ token, user: serializeAuthUser(user) });
+});
+
+app.post('/api/auth/signup', async (req, res) => {
+  const { displayName, email, password, seat } = req.body || {};
+
+  if (!email || !password) {
+    return res.status(400).json({ error: '"email" and "password" are required' });
+  }
+
+  if (String(password).length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    const user = await createPassengerUser({ displayName, email, password, seat });
+    const token = buildToken(user);
+    res.status(201).json({ token, user: serializeAuthUser(user) });
+  } catch (error) {
+    if (error.code === 'EMAIL_TAKEN') {
+      return res.status(409).json({ error: 'An Enrich account already exists for that email' });
     }
-  });
+
+    if (error.code === 'EMAIL_REQUIRED') {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    console.error('Passenger signup failed:', error);
+    res.status(500).json({ error: 'Unable to create the Enrich account right now' });
+  }
 });
 
 app.get('/api/auth/me', requireAuthenticatedUser, (req, res) => {
-  res.json({
-    user: {
-      id: req.user.sub,
-      username: req.user.username,
-      role: req.user.role,
-      seat: req.user.seat || null
-    }
-  });
+  res.json({ user: serializeAuthUser(req.user) });
 });
 
 app.get('/api/chat', async (req, res) => {
