@@ -338,6 +338,13 @@ function sendChat() {
 
 function loadPassengerChat() {
   let all = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
+
+  // Migrate any stale '14A' seat references to the correct seat
+  if (all.some(m => m.seat === '14A')) {
+    all = all.map(m => m.seat === '14A' ? { ...m, seat: PASSENGER_SEAT } : m);
+    localStorage.setItem('mhskyhub_chat', JSON.stringify(all));
+  }
+
   const mine = all.filter(m => m.seat === PASSENGER_SEAT);
 
   // Seed demo conversation if no messages exist yet (for presentation)
