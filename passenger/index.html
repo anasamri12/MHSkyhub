@@ -148,10 +148,145 @@
     <div class="screen" id="screen-watch">
       <div class="screen-title">Entertainment</div>
       <div class="tab-row">
+        <button class="tab-btn" onclick="setWatchTab('live')">Live</button>
         <button class="tab-btn active" onclick="setWatchTab('movies')">Movies</button>
         <button class="tab-btn" onclick="setWatchTab('tv')">TV Shows</button>
         <button class="tab-btn" onclick="setWatchTab('music')">Music</button>
         <button class="tab-btn" onclick="setWatchTab('games')">Games</button>
+      </div>
+
+      <!-- Live Tab -->
+      <div class="watch-tab-content" id="watch-live">
+        <div class="live-hero">
+          <div class="live-hero-copy">
+            <div class="live-kicker"><span class="live-dot"></span>Live Onboard</div>
+            <div class="live-title">Follow breaking news, major fixtures, and live moments while you fly.</div>
+            <div class="live-sub">Curated highlights refresh through the journey so passengers can jump straight into what is happening now.</div>
+            <div class="live-meta-row">
+              <div class="live-meta-pill">Sports Centre</div>
+              <div class="live-meta-pill">News Desk</div>
+              <div class="live-meta-pill">Global Highlights</div>
+            </div>
+          </div>
+          <div class="live-score-card">
+            <div class="live-score-head">
+              <div class="live-score-label">Featured Stream</div>
+              <div class="live-score-tag">Final Minutes</div>
+            </div>
+            <div class="live-score-league">Premier League</div>
+            <div class="live-score-match">Manchester United vs Liverpool</div>
+            <div class="live-score-line">
+              <div class="team-score">
+                <div class="team-logo-wrap">
+                  <img src="../assets/posters/Live/manchester united logo.png" alt="Manchester United logo" class="team-logo">
+                </div>
+                <div class="team-name">MUN</div>
+                <div class="team-num">10</div>
+              </div>
+              <div class="score-divider">90+2'</div>
+              <div class="team-score">
+                <div class="team-logo-wrap">
+                  <img src="../assets/posters/Live/liverpool logo.png" alt="Liverpool logo" class="team-logo">
+                </div>
+                <div class="team-name">LIV</div>
+                <div class="team-num">0</div>
+              </div>
+            </div>
+            <button class="hero-play" onclick="showToast('Opening featured live coverage','info')">▶&nbsp; Watch Live</button>
+          </div>
+        </div>
+
+        <div class="live-grid">
+          <div class="live-panel">
+            <div class="section-title" style="margin-top:0;">Live Sports Events</div>
+            <div class="live-event-list">
+              <div class="live-event-card" onclick="showToast('Loading Champions League live feed','info')">
+                <div class="live-event-top">
+                  <div>
+                    <div class="live-event-league">UEFA Champions League</div>
+                    <div class="live-event-match">Real Madrid vs Bayern</div>
+                  </div>
+                  <div class="live-status">Live</div>
+                </div>
+                <div class="live-event-bottom">
+                  <div class="live-event-time">67' · Bernabeu</div>
+                  <div class="live-event-score">1 - 0</div>
+                </div>
+              </div>
+              <div class="live-event-card" onclick="showToast('Loading Formula 1 race centre','info')">
+                <div class="live-event-top">
+                  <div>
+                    <div class="live-event-league">Formula 1</div>
+                    <div class="live-event-match">Japanese Grand Prix</div>
+                  </div>
+                  <div class="live-status amber">Lap 42</div>
+                </div>
+                <div class="live-event-bottom">
+                  <div class="live-event-time">Race Centre</div>
+                  <div class="live-event-score">Verstappen leads</div>
+                </div>
+              </div>
+              <div class="live-event-card" onclick="showToast('Opening NBA game tracker','info')">
+                <div class="live-event-top">
+                  <div>
+                    <div class="live-event-league">NBA</div>
+                    <div class="live-event-match">Lakers vs Celtics</div>
+                  </div>
+                  <div class="live-status">Q4</div>
+                </div>
+                <div class="live-event-bottom">
+                  <div class="live-event-time">04:18 remaining</div>
+                  <div class="live-event-score">101 - 104</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="live-panel">
+            <div class="section-title" style="margin-top:0;">Live News Briefing</div>
+            <div class="headline-stack">
+              <div class="headline-card" onclick="showToast('Opening world news brief','info')">
+                <div class="headline-tag">World</div>
+                <div class="headline-title">Top global stories in a quick 3-minute summary for the cabin.</div>
+                <div class="headline-meta">Updated moments ago</div>
+              </div>
+              <div class="headline-card" onclick="showToast('Opening business news brief','info')">
+                <div class="headline-tag">Business</div>
+                <div class="headline-title">Markets, aviation, and travel headlines collected into one briefing.</div>
+                <div class="headline-meta">Refreshes hourly</div>
+              </div>
+              <div class="headline-card" onclick="showToast('Opening Asia regional roundup','info')">
+                <div class="headline-tag">Asia</div>
+                <div class="headline-title">Regional developments and destination updates across Asia and Europe.</div>
+                <div class="headline-meta">Crew-curated highlights</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Live Channels</div>
+        <div class="live-channel-grid">
+          <div class="live-channel-card" onclick="showToast('Opening Sports Centre','info')">
+            <div class="channel-badge">01</div>
+            <div class="channel-title">Sports Centre</div>
+            <div class="channel-sub">Matches, scoreboards, and post-game analysis</div>
+          </div>
+          <div class="live-channel-card" onclick="showToast('Opening News Desk','info')">
+            <div class="channel-badge">02</div>
+            <div class="channel-title">News Desk</div>
+            <div class="channel-sub">Breaking updates, headlines, and explainer reels</div>
+          </div>
+          <div class="live-channel-card" onclick="showToast('Opening Market Watch','info')">
+            <div class="channel-badge">03</div>
+            <div class="channel-title">Market Watch</div>
+            <div class="channel-sub">Business coverage and aviation industry snapshots</div>
+          </div>
+          <div class="live-channel-card" onclick="showToast('Opening Global Live','info')">
+            <div class="channel-badge">04</div>
+            <div class="channel-title">Global Live</div>
+            <div class="channel-sub">Culture, weather, travel, and world event highlights</div>
+          </div>
+        </div>
       </div>
 
       <!-- Movies Tab -->

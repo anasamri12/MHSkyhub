@@ -197,7 +197,7 @@ function setWatchTab(tab) {
   if (tabContent) tabContent.classList.add('active');
   // find matching tab button
   const buttons = document.querySelectorAll('.tab-btn');
-  const tabNames = ['movies','tv','music','games'];
+  const tabNames = ['live','movies','tv','music','games'];
   const idx = tabNames.indexOf(tab);
   if (idx >= 0 && buttons[idx]) buttons[idx].classList.add('active');
 }
