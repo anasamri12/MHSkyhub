@@ -1,6 +1,8 @@
 // ============================================================
 // STATE
 // ============================================================
+const PASSENGER_SEAT = '14A';
+let passengerChatCount = 0;
 let currentScreen = 'home';
 let orderQty = 1;
 let selectedAssist = null;
@@ -57,7 +59,7 @@ function navigateTo(screenId) {
   // Special handling
   if (screenId === 'track') refreshTrackScreen();
   if (screenId === 'order') showOrderCategories();
-  if (screenId === 'chat') scrollChatToBottom();
+  if (screenId === 'chat') { loadPassengerChat(); scrollChatToBottom(); }
 }
 
 // ============================================================
@@ -325,44 +327,45 @@ function sendChat() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text) return;
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2,'0');
-  const m = String(now.getMinutes()).padStart(2,'0');
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg passenger';
-  div.innerHTML = '<div class="msg-bubble">' + escapeHtml(text) + '</div><div class="msg-time">' + h + ':' + m + '</div>';
-  msgs.appendChild(div);
-  input.value = '';
-  scrollChatToBottom();
-
-  // Save to localStorage
   const chatLog = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
-  chatLog.push({ from: 'passenger', text, time: now.getTime() });
+  chatLog.push({ from: 'passenger', seat: PASSENGER_SEAT, text, time: Date.now() });
   localStorage.setItem('mhskyhub_chat', JSON.stringify(chatLog));
-
-  // Simulate crew response
-  setTimeout(() => {
-    const resp = getCrewResponse(text);
-    const respDiv = document.createElement('div');
-    respDiv.className = 'msg crew';
-    respDiv.innerHTML = '<div class="msg-bubble">' + resp + '</div><div class="msg-time">' + h + ':' + String(parseInt(m)+1).padStart(2,'0') + '</div>';
-    msgs.appendChild(respDiv);
-    scrollChatToBottom();
-  }, 1500);
+  const mine = chatLog.filter(m => m.seat === PASSENGER_SEAT);
+  passengerChatCount = mine.length;
+  input.value = '';
+  renderPassengerChat(mine);
 }
 
-function getCrewResponse(msg) {
-  const m = msg.toLowerCase();
-  if (m.includes('pillow')) return "I'll bring an extra pillow right away!";
-  if (m.includes('blanket')) return "Of course, one blanket coming up!";
-  if (m.includes('water') || m.includes('drink')) return "I'll bring you some water shortly. Still or sparkling?";
-  if (m.includes('food') || m.includes('meal') || m.includes('eat')) return "Our meal service will begin in approximately 20 minutes. You can also order snacks via the Order screen.";
-  if (m.includes('toilet') || m.includes('bathroom')) return "The nearest lavatory is in the mid-cabin, currently available.";
-  if (m.includes('help') || m.includes('assist')) return "Happy to help! What do you need?";
-  if (m.includes('thank')) return "You're most welcome! Let me know if you need anything else.";
-  if (m.includes('wifi') || m.includes('internet')) return "Wi-Fi is available. You can connect via the MH Wi-Fi network. Packages start from $4.99.";
-  return "Thank you for your message. A crew member will assist you shortly.";
+function loadPassengerChat() {
+  const all = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
+  const mine = all.filter(m => m.seat === PASSENGER_SEAT);
+  passengerChatCount = mine.length;
+  renderPassengerChat(mine);
+}
+
+function renderPassengerChat(msgs) {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  if (msgs.length === 0) {
+    container.innerHTML = '<div class="chat-empty-hint">Crew is ready to help. Type your message below.</div>';
+    return;
+  }
+  container.innerHTML = msgs.map(msg => {
+    const time = new Date(msg.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return '<div class="msg ' + msg.from + '"><div class="msg-bubble">' + escapeHtml(msg.text) + '</div><div class="msg-time">' + time + '</div></div>';
+  }).join('');
+  scrollChatToBottom();
+}
+
+function syncPassengerChat() {
+  const all = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
+  const mine = all.filter(m => m.seat === PASSENGER_SEAT);
+  if (mine.length !== passengerChatCount) {
+    const isNewCrew = mine.length > passengerChatCount && mine[mine.length - 1].from === 'crew';
+    passengerChatCount = mine.length;
+    renderPassengerChat(mine);
+    if (isNewCrew) showToast('\u2713 Crew replied to your message', 'success');
+  }
 }
 
 function escapeHtml(str) {
@@ -677,6 +680,7 @@ function showToast(msg, type) {
 // SYNC FROM CREW
 // ============================================================
 function syncFromLocalStorage() {
+  syncPassengerChat();
   if (!activeRequest) return;
   const reqs = JSON.parse(localStorage.getItem('mhskyhub_requests') || '[]');
   const updated = reqs.find(r => r.id === activeRequest.id);
@@ -720,6 +724,7 @@ function init() {
   updateClock();
   updateFlightMap();
   refreshBluetoothWidget();
+  loadPassengerChat();
   clockInterval = setInterval(() => {
     updateClock();
     updateFlightEta();

@@ -107,10 +107,19 @@
               </div>
             </div>
 
-            <div class="no-select-msg" style="height:200px;">
-              <div class="no-select-icon">👆</div>
-              <div class="no-select-title">Select a request to view details</div>
-              <div class="no-select-sub">Click any request from the sidebar<br>to view full details and update status.</div>
+            <div class="crew-chat-section">
+              <div class="crew-chat-header">
+                <div class="crew-chat-title">💬 Passenger Chat</div>
+                <div class="crew-chat-unread" id="crew-chat-unread" style="display:none;">New</div>
+              </div>
+              <div class="crew-chat-seats" id="crew-chat-seats" style="display:none;"></div>
+              <div class="crew-chat-messages" id="crew-chat-messages">
+                <div class="crew-chat-empty">No messages yet.<br>Passengers can reach you via the Chat screen on their IFE.</div>
+              </div>
+              <div class="crew-chat-input-row">
+                <input type="text" id="crew-chat-input" class="crew-chat-input" placeholder="Reply to passenger…" autocomplete="off">
+                <button class="crew-chat-send-btn" onclick="sendCrewChat()">Send</button>
+              </div>
             </div>
           </div>
 

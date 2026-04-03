@@ -24,8 +24,13 @@ function init() {
   renderCabinMap();
   updateBadges();
   updateClock();
+  loadCrewChat();
   setInterval(updateClock, 1000);
   syncInterval = setInterval(syncFromPassenger, 2000);
+
+  document.getElementById('crew-chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendCrewChat();
+  });
 
   // Section filter buttons
   document.querySelectorAll('.section-filter-btn').forEach(btn => {
@@ -70,6 +75,8 @@ function syncFromPassenger() {
       // Don't override crew status with passenger version (crew is authoritative)
     }
   });
+
+  syncCrewChat();
 }
 
 // ============================================================
@@ -401,6 +408,122 @@ function markUnable() {
   renderCabinMap();
   showToast('Request marked as unable to fulfil', 'info');
   closeDetail();
+}
+
+// ============================================================
+// CREW CHAT
+// ============================================================
+let crewChatSeat = null;   // which seat the crew is currently viewing
+let crewChatCount = 0;     // total message count across all seats (for change detection)
+
+function loadCrewChat() {
+  const all = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
+  crewChatCount = all.length;
+  refreshCrewChatUI(all);
+}
+
+// Build seat tabs + message list from the full chat log
+function refreshCrewChatUI(all) {
+  const seats = [...new Set(all.map(m => m.seat).filter(Boolean))];
+
+  // Render seat tabs
+  const tabsEl = document.getElementById('crew-chat-seats');
+  if (tabsEl) {
+    if (seats.length === 0) {
+      tabsEl.style.display = 'none';
+    } else {
+      tabsEl.style.display = 'flex';
+      // Auto-select first seat if none chosen or previous seat no longer exists
+      if (!crewChatSeat || !seats.includes(crewChatSeat)) crewChatSeat = seats[0];
+      // Count unread (passenger messages) per seat for dot indicator
+      const unreadBySeat = {};
+      all.filter(m => m.from === 'passenger' && m.seat).forEach(m => {
+        unreadBySeat[m.seat] = (unreadBySeat[m.seat] || 0) + 1;
+      });
+      tabsEl.innerHTML = seats.map(seat =>
+        `<div class="crew-seat-tab ${crewChatSeat === seat ? 'active' : ''}" onclick="selectCrewChatSeat('${seat}')">${seat}</div>`
+      ).join('');
+    }
+  }
+
+  // Render messages for selected seat
+  const msgEl = document.getElementById('crew-chat-messages');
+  if (!msgEl) return;
+
+  if (seats.length === 0) {
+    msgEl.innerHTML = '<div class="crew-chat-empty">No messages yet.<br>Passengers can reach you via the Chat screen on their IFE.</div>';
+    return;
+  }
+
+  const filtered = all.filter(m => m.seat === crewChatSeat);
+  if (filtered.length === 0) {
+    msgEl.innerHTML = '<div class="crew-chat-empty">No messages from seat ' + crewChatSeat + ' yet.</div>';
+    return;
+  }
+
+  msgEl.innerHTML = filtered.map(msg => {
+    const isCrew = msg.from === 'crew';
+    const time = new Date(msg.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="ccmsg ${isCrew ? 'ccmsg-crew' : 'ccmsg-passenger'}">
+      <div class="ccmsg-bubble">${escapeCrewHtml(msg.text)}</div>
+      <div class="ccmsg-meta">${isCrew ? 'You' : 'Seat ' + msg.seat} · ${time}</div>
+    </div>`;
+  }).join('');
+  scrollCrewChatToBottom();
+}
+
+function selectCrewChatSeat(seat) {
+  crewChatSeat = seat;
+  const all = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
+  refreshCrewChatUI(all);
+}
+
+function syncCrewChat() {
+  const all = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
+  if (all.length !== crewChatCount) {
+    const prevCount = crewChatCount;
+    crewChatCount = all.length;
+    // Find newest message
+    const newest = all[all.length - 1];
+    const isNewPassenger = all.length > prevCount && newest && newest.from === 'passenger';
+    refreshCrewChatUI(all);
+    if (isNewPassenger) {
+      showToast('💬 New message from Seat ' + (newest.seat || '?'), 'info');
+      const badge = document.getElementById('crew-chat-unread');
+      if (badge) {
+        badge.textContent = 'New · ' + (newest.seat || '');
+        badge.style.display = 'inline-block';
+        setTimeout(() => { badge.style.display = 'none'; }, 4000);
+      }
+    }
+  }
+}
+
+function sendCrewChat() {
+  if (!crewChatSeat) {
+    showToast('No passenger seat selected', 'info');
+    return;
+  }
+  const input = document.getElementById('crew-chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const chatLog = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
+  chatLog.push({ from: 'crew', seat: crewChatSeat, text, time: Date.now() });
+  localStorage.setItem('mhskyhub_chat', JSON.stringify(chatLog));
+  crewChatCount = chatLog.length;
+  input.value = '';
+  refreshCrewChatUI(chatLog);
+}
+
+function scrollCrewChatToBottom() {
+  setTimeout(() => {
+    const c = document.getElementById('crew-chat-messages');
+    if (c) c.scrollTop = c.scrollHeight;
+  }, 30);
+}
+
+function escapeCrewHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ============================================================
