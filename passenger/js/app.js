@@ -1,7 +1,7 @@
 // ============================================================
 // STATE
 // ============================================================
-const PASSENGER_SEAT = '14A';
+const PASSENGER_SEAT = '17A';
 let passengerChatCount = 0;
 let currentScreen = 'home';
 let orderQty = 1;
@@ -418,7 +418,7 @@ function refreshBluetoothWidget() {
   if (deviceMeta) {
     deviceMeta.textContent = bluetoothState.enabled
       ? (bluetoothState.connectedDevice
-        ? 'Connected for seat 14A entertainment \u00B7 ' + bluetoothState.battery + '% battery remaining'
+        ? 'Connected for seat 17A entertainment \u00B7 ' + bluetoothState.battery + '% battery remaining'
         : 'Bluetooth is on and ready to pair with your headphones.')
       : 'Turn Bluetooth back on to reconnect your personal audio device.';
   }
@@ -713,7 +713,7 @@ function addHistory(req) {
   histEl.style.display = 'block';
   const div = document.createElement('div');
   div.className = 'history-item';
-  div.innerHTML = '<div class="history-icon">' + (req.icon||'[PKG]') + '</div><div><div class="history-name">' + req.item + '</div><div class="history-meta">Delivered \u00B7 Seat 14A</div></div><div class="history-done">\u2713</div>';
+  div.innerHTML = '<div class="history-icon">' + (req.icon||'[PKG]') + '</div><div><div class="history-name">' + req.item + '</div><div class="history-meta">Delivered \u00B7 Seat 17A</div></div><div class="history-done">\u2713</div>';
   histEl.appendChild(div);
 }
 
