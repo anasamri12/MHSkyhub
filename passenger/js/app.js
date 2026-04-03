@@ -337,10 +337,27 @@ function sendChat() {
 }
 
 function loadPassengerChat() {
-  const all = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
+  let all = JSON.parse(localStorage.getItem('mhskyhub_chat') || '[]');
   const mine = all.filter(m => m.seat === PASSENGER_SEAT);
-  passengerChatCount = mine.length;
-  renderPassengerChat(mine);
+
+  // Seed demo conversation if no messages exist yet (for presentation)
+  if (mine.length === 0) {
+    const t = Date.now();
+    const seed = [
+      { from: 'crew',      seat: PASSENGER_SEAT, text: "Good afternoon! I'm Sarah, your cabin crew for MH 003 today. How can I assist you?", time: t - 12*60000 },
+      { from: 'passenger', seat: PASSENGER_SEAT, text: "Hi Sarah! Could I get a cup of Teh Tarik please?",                                    time: t - 11*60000 },
+      { from: 'crew',      seat: PASSENGER_SEAT, text: "Of course! One Teh Tarik coming right up. Can I help with anything else?",             time: t - 10*60000 },
+      { from: 'passenger', seat: PASSENGER_SEAT, text: "Could I also get an extra blanket? It's a bit chilly.",                               time: t -  8*60000 },
+      { from: 'crew',      seat: PASSENGER_SEAT, text: "Absolutely! Blanket and Teh Tarik on the way. Enjoy the flight to London!",            time: t -  7*60000 },
+      { from: 'passenger', seat: PASSENGER_SEAT, text: "Thank you so much, really appreciate it!",                                            time: t -  6*60000 },
+    ];
+    all = [...all, ...seed];
+    localStorage.setItem('mhskyhub_chat', JSON.stringify(all));
+  }
+
+  const updated = all.filter(m => m.seat === PASSENGER_SEAT);
+  passengerChatCount = updated.length;
+  renderPassengerChat(updated);
 }
 
 function renderPassengerChat(msgs) {
